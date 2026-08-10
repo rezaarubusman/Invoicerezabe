@@ -1,13 +1,126 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
-  provider = "prisma-client"
-  output   = "../generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
+}
+
+enum InvoiceStatus {
+  PENDING
+  PAID
+  OVERDUE
+}
+
+enum RecurringInterval {
+  WEEKLY
+  MONTHLY
+  YEARLY
+}
+
+model User {
+  id                String     @id @default(uuid())
+  email             String     @unique
+  password          String     
+  name              String
+  isEmailVerified   Boolean    @default(false)
+  verificationToken String?    
+  
+  clients           Client[]
+  categories        Category[]
+  products          Product[]
+  invoices          Invoice[]
+
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+}
+
+model Client {
+  id                String    @id @default(uuid())
+  userId            String
+  name              String
+  email             String
+  phone             String?
+  address           String?   @db.Text
+  paymentPreference String?   
+
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  invoices          Invoice[]
+
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+}
+
+model Category {
+  id          String    @id @default(uuid())
+  userId      String
+  name        String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  products    Product[]
+  deletedAt   DateTime? 
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Product {
+  id          String    @id @default(uuid())
+  userId      String
+  categoryId  String?
+  name        String
+  description String?   @db.Text
+  price       Decimal   @db.Decimal(12, 2)
+  
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category    Category?     @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  invoiceItems InvoiceItem[]
+
+  deletedAt   DateTime?
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Invoice {
+  id                String        @id @default(uuid())
+  invoiceNumber     String        @unique
+  userId            String
+  clientId          String
+  
+  issueDate         DateTime      @default(now())
+  dueDate           DateTime
+  paymentTerms      String?       @db.Text 
+  
+  status            InvoiceStatus @default(PENDING)
+  isSent            Boolean       @default(false) 
+  
+  isRecurring       Boolean       @default(false)
+  recurringInterval RecurringInterval? 
+  nextRecurringDate DateTime?     
+  
+  user              User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  client            Client        @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  items             InvoiceItem[]
+
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+}
+
+model InvoiceItem {
+  id          String   @id @default(uuid())
+  invoiceId   String
+  productId   String?  
+  name        String   
+  description String?  @db.Text
+  quantity    Int      @default(1)
+  price       Decimal  @db.Decimal(12, 2) 
+  
+  invoice     Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  product     Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }

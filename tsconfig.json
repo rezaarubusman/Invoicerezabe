@@ -9,10 +9,11 @@
     // See also https://aka.ms/tsconfig/module
     "module": "nodenext",
     "target": "esnext",
-    "types": [],
+    "types": ["node"],
+    
     // For nodejs:
     // "lib": ["esnext"],
-    // "types": ["node"],
+    // "types": ["node"], <-- (Bagian ini sudah terwakili oleh baris di atas)
     // and npm install -D @types/node
 
     // Other Outputs
@@ -39,6 +40,6 @@
     "isolatedModules": true,
     "noUncheckedSideEffectImports": true,
     "moduleDetection": "force",
-    "skipLibCheck": true,
+    "skipLibCheck": true
   }
 }
