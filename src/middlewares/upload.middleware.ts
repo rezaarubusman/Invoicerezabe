@@ -1,5 +1,5 @@
 import { ApiError } from "../utils/api-error.js";
-import { Request } from "express";
+import type { Request } from "express";
 import multer from "multer";
 
 type FileType = "image" | "pdf";

@@ -1,7 +1,7 @@
-import { NextFunction, Request, Response } from "express";
+import type { NextFunction, Request, Response } from "express";
 import jwt from "jsonwebtoken";
-import { Role } from "../../generated/prisma/enums.js";
-import { PrismaClient } from "../../generated/prisma/client.js";
+import { Role } from "@prisma/client";
+import { PrismaClient } from "@prisma/client";
 import { ApiError } from "../utils/api-error.js";
 
 interface JwtPayload {
