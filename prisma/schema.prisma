@@ -20,15 +20,21 @@ enum RecurringInterval {
   MONTHLY
   YEARLY
 }
+enum Role {
+  ADMIN
+  CUSTOMER
+}
 
 model User {
   id                String     @id @default(uuid())
   email             String     @unique
-  password          String     
+  password          String
   name              String
+  role              Role       @default(CUSTOMER)
   isEmailVerified   Boolean    @default(false)
-  verificationToken String?    
-  
+  verificationToken String?
+  activeSessionId   String?
+
   clients           Client[]
   categories        Category[]
   products          Product[]
