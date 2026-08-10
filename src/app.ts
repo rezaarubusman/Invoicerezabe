@@ -10,9 +10,6 @@ import { ValidationMiddleware } from "./middlewares/validation.middleware.js";
 import { AuthController } from "./modules/auth/auth.controller.js";
 import { AuthRouter } from "./modules/auth/auth.router.js";
 import { AuthService } from "./modules/auth/auth.service.js";
-import { UsersService } from "./modules/users/users.service.js";
-import { UsersController } from "./modules/users/users.controller.js";
-import { UsersRouter } from "./modules/users/users.router.js";
 import { CloudinaryService } from "./modules/cloudinary/cloudinary.service.js";
 
 const PORT = 8000;
@@ -47,17 +44,9 @@ export class App {
     const authController = new AuthController(authService);
     const authRouter = new AuthRouter(authController, validationMiddleware, authMiddleware);
 
-    const usersService = new UsersService(prismaClient);
-    const usersController = new UsersController(usersService);
-    const usersRouter = new UsersRouter(usersController, validationMiddleware, authMiddleware);
-
     this.app.use(
       "/auth",
       authRouter.getRouter()
-    );
-    this.app.use(
-      "/users",
-      usersRouter.getRouter()
     );
   };
 
