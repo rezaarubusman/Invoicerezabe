@@ -3,127 +3,128 @@ import { randomUUID } from "crypto";
 import type { PrismaClient } from "@prisma/client";
 import { ApiError } from "../../utils/api-error.js";
 import { generateAccessToken } from "../../lib/jwt.js";
+import type { RegisterDto, LoginDto, VerifyEmailDto, ResendVerificationDto, ForgotPasswordDto, ResetPasswordDto } from "./auth.dto.js";
 
 export class AuthService {
   constructor( private prisma: PrismaClient ) {}
 
-  register = async ( name: string, email: string, password: string ) => {
-    const normalizedEmail =
-      email.trim().toLowerCase();
+  register = async (dto: RegisterDto) => {
+  const { name, email, password } = dto;
+  const normalizedEmail =
+    email.trim().toLowerCase();
+  const existingUser =
+    await this.prisma.user.findUnique({
+      where: {
+        email: normalizedEmail,
+      },
+    });
 
-    const existingUser =
-      await this.prisma.user.findUnique({
-        where: { email: normalizedEmail },
-      });
+  if (existingUser) {
+    throw new ApiError( "Email is already registered", 409 );
+  }
+  const hashedPassword =
+    await argon2.hash(password);
+  const verificationToken =
+    randomUUID();
+  const verificationTokenExpiresAt =
+    new Date(
+      Date.now() +
+        24 * 60 * 60 * 1000
+    );
+  const user =
+    await this.prisma.user.create({
+      data: {
+        name,
+        email: normalizedEmail,
+        password: hashedPassword,
+        verificationToken,
+        verificationTokenExpiresAt,
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        isEmailVerified: true,
+        createdAt: true,
+      },
+    });
 
-    if (existingUser) { throw new ApiError( "Email is already registered", 409 );
-    }
-
-    const hashedPassword =
-      await argon2.hash(password);
-
-    const verificationToken =
-      randomUUID();
-
-    const verificationTokenExpiresAt =
-      new Date(
-        Date.now() +
-          24 * 60 * 60 * 1000
-      );
-
-    const user =
-      await this.prisma.user.create({
-        data: {
-          name,
-          email: normalizedEmail,
-          password: hashedPassword,
-          verificationToken,
-          verificationTokenExpiresAt,
-        },
-
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          role: true,
-          isEmailVerified: true,
-          createdAt: true,
-        },
-      });
-
-    return {
-      message: "Registration successful. Please verify your email.", user };
+  return {
+    message: "Registration successful. Please verify your email.", user };
   };
 
-  login = async ( email: string, password: string ) => {
+  login = async (dto: LoginDto) => {
+    const { email, password } = dto;
     const normalizedEmail =
-      email.trim().toLowerCase();
-
+        email.trim().toLowerCase();
     const user =
-      await this.prisma.user.findUnique({
-        where: { email: normalizedEmail },
-      });
+        await this.prisma.user.findUnique({
+        where: {
+            email: normalizedEmail,
+        },
+        });
 
-    if (!user) { throw new ApiError( "Invalid email or password", 401 );
+    if (!user) {
+        throw new ApiError( "Invalid email or password", 401 );
     }
 
     const isPasswordValid =
-      await argon2.verify(
+        await argon2.verify(
         user.password,
         password
-      );
+        );
 
-    if (!isPasswordValid) {throw new ApiError( "Invalid email or password", 401 );}
-
-    /**
-     * Kalau aplikasi mengharuskan
-     * email diverifikasi sebelum login,
-     * uncomment bagian ini.
-     */
+    if (!isPasswordValid) {
+        throw new ApiError(
+        "Invalid email or password",
+        401
+        );
+    }
 
     /*
     if (!user.isEmailVerified) {
-      throw new ApiError(
+        throw new ApiError(
         "Please verify your email first",
         403
-      );
+        );
     }
     */
 
     const sessionId =
-      randomUUID();
+        randomUUID();
 
     await this.prisma.user.update({
-      where: {
+        where: {
         id: user.id,
-      },
-      data: {
+        },
+        data: {
         activeSessionId: sessionId,
-      },
+        },
     });
 
     const accessToken =
-      generateAccessToken({
+        generateAccessToken({
         id: user.id,
         email: user.email,
         name: user.name,
         role: user.role,
         sessionId,
-      });
+        });
 
     return {
-      message: "Login successful",
-      accessToken,
-      user: {
+        message: "Login successful",
+        accessToken,
+        user: {
         id: user.id,
         name: user.name,
         email: user.email,
         role: user.role,
         isEmailVerified:
-          user.isEmailVerified,
-      },
+            user.isEmailVerified,
+        },
+        };
     };
-  };
 
   logout = async ( userId: string ) => {
     await this.prisma.user.update({
@@ -160,139 +161,158 @@ export class AuthService {
     return user;
   };
 
-  verifyEmail = async ( token: string ) => {
+  verifyEmail = async ( dto: VerifyEmailDto ) => {
+    const { token } = dto;
     const user =
-      await this.prisma.user.findFirst({
+        await this.prisma.user.findFirst({
         where: {
-          verificationToken: token,
+            verificationToken: token,
         },
-      });
+        });
 
-    if (!user) { throw new ApiError( "Invalid verification token", 400); }
+    if (!user) {
+        throw new ApiError( "Invalid verification token", 400 );
+    }
 
     if (
-      !user.verificationTokenExpiresAt ||
-      user.verificationTokenExpiresAt <
-        new Date()
-    ) { throw new ApiError("Verification token has expired", 400);}
+        !user.verificationTokenExpiresAt ||
+        user.verificationTokenExpiresAt < new Date()
+    ) {
+        throw new ApiError( "Verification token has expired", 400 );
+    }
 
     await this.prisma.user.update({
-      where: {
+        where: {
         id: user.id,
-      },
-      data: {
+        },
+        data: {
         isEmailVerified: true,
         verificationToken: null,
         verificationTokenExpiresAt: null,
-      },
+        },
     });
 
-    return { message: "Email verified successfully" };
-  };
+    return {
+        message: "Email verified successfully" };
+    };
 
-  resendVerification = async ( email: string ) => {
+  resendVerification = async ( dto: ResendVerificationDto ) => {
+    const { email } = dto;
     const normalizedEmail =
-      email.trim().toLowerCase();
-
+        email.trim().toLowerCase();
     const user =
-      await this.prisma.user.findUnique({
+        await this.prisma.user.findUnique({
         where: {
-          email: normalizedEmail,
+            email: normalizedEmail,
         },
-      });
-    if (!user) { return { message: "If the email exists, a verification email has been sent." }; }
+        });
 
-    if (user.isEmailVerified) { return { message: "Email is already verified." }; }
+    if (!user) {
+        return {
+        message: "If the email exists, a verification email has been sent." };
+    }
+
+    if (user.isEmailVerified) {
+        return {
+        message: "Email is already verified." };
+    }
 
     const verificationToken =
-      randomUUID();
-
+        randomUUID();
     const verificationTokenExpiresAt =
-      new Date(
+        new Date(
         Date.now() +
-          24 * 60 * 60 * 1000
-      );
+            24 * 60 * 60 * 1000
+        );
 
     await this.prisma.user.update({
-      where: {
+        where: {
         id: user.id,
-      },
-      data: {
+        },
+        data: {
         verificationToken,
         verificationTokenExpiresAt,
-      },
+        },
     });
 
-    return { message: "If the email exists, a verification email has been sent." };
-  };
+    return {
+        message: "If the email exists, a verification email has been sent." };
+    };
 
-  forgotPassword = async ( email: string ) => {
+  forgotPassword = async ( dto: ForgotPasswordDto ) => {
+    const { email } = dto;
     const normalizedEmail =
-      email.trim().toLowerCase();
-
+        email.trim().toLowerCase();
     const user =
-      await this.prisma.user.findUnique({
+        await this.prisma.user.findUnique({
         where: {
-          email: normalizedEmail,
+            email: normalizedEmail,
         },
-      });
-    if (!user) { return { message: "If the email exists, a password reset email has been sent." };
+        });
+
+    if (!user) {
+        return {
+        message: "If the email exists, a password reset email has been sent." };
     }
 
     const resetPasswordToken =
-      randomUUID();
-
+        randomUUID();
     const resetPasswordExpiresAt =
-      new Date(
+        new Date(
         Date.now() +
-          15 * 60 * 1000
-      );
+            15 * 60 * 1000
+        );
 
     await this.prisma.user.update({
-      where: {
+        where: {
         id: user.id,
-      },
-      data: {
+        },
+        data: {
         resetPasswordToken,
         resetPasswordExpiresAt,
-      },
+        },
     });
 
-    return { message: "If the email exists, a password reset email has been sent." };
-  };
+    return {
+        message: "If the email exists, a password reset email has been sent." };
+    };
 
-  resetPassword = async ( token: string, password: string ) => {
+resetPassword = async ( dto: ResetPasswordDto ) => {
+    const { token, password } = dto;
     const user =
-      await this.prisma.user.findFirst({
+        await this.prisma.user.findFirst({
         where: {
-          resetPasswordToken: token,
+            resetPasswordToken: token,
         },
-      });
+        });
 
-    if (!user) { throw new ApiError( "Invalid reset token", 400 ); }
+    if (!user) {
+        throw new ApiError( "Invalid reset token", 400 );
+    }
 
     if (
-      !user.resetPasswordExpiresAt ||
-      user.resetPasswordExpiresAt <
-        new Date()
+        !user.resetPasswordExpiresAt ||
+        user.resetPasswordExpiresAt < new Date()
     ) {
-      throw new ApiError("Reset token has expired", 400 );
+        throw new ApiError( "Reset token has expired", 400 );
     }
 
     const hashedPassword =
-      await argon2.hash(password);
+        await argon2.hash(password);
 
     await this.prisma.user.update({
-      where: {
+        where: {
         id: user.id,
-      },
-      data: {
+        },
+        data: {
         password: hashedPassword,
         resetPasswordToken: null,
         resetPasswordExpiresAt: null,
         activeSessionId: null,
-      },
+        },
     });
 
-    return { message: "Password reset successfully. Please login again." }; };
+    return {
+        message: "Password reset successfully. Please login again."};
+    };
 }

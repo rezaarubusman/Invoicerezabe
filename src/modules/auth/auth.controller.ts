@@ -11,18 +11,11 @@ export class AuthController {
     next: NextFunction
   ) => {
     try {
-      const {
-        name,
-        email,
-        password,
-      } = req.body as RegisterDto;
+      const dto =
+        req.body as RegisterDto;
 
       const result =
-        await this.authService.register(
-          name,
-          email,
-          password
-        );
+        await this.authService.register(dto);
 
       return res
         .status(201)
@@ -38,16 +31,11 @@ export class AuthController {
     next: NextFunction
   ) => {
     try {
-      const {
-        email,
-        password,
-      } = req.body as LoginDto;
+      const dto =
+        req.body as LoginDto;
 
       const result =
-        await this.authService.login(
-          email,
-          password
-        );
+        await this.authService.login(dto);
 
       return res
         .status(200)
@@ -109,12 +97,12 @@ export class AuthController {
     next: NextFunction
   ) => {
     try {
-      const { token } =
+      const dto =
         req.body as VerifyEmailDto;
 
       const result =
         await this.authService.verifyEmail(
-          token
+          dto
         );
 
       return res
@@ -131,12 +119,12 @@ export class AuthController {
     next: NextFunction
   ) => {
     try {
-      const { email } =
+      const dto =
         req.body as ResendVerificationDto;
 
       const result =
         await this.authService.resendVerification(
-          email
+          dto
         );
 
       return res
@@ -153,12 +141,12 @@ export class AuthController {
     next: NextFunction
   ) => {
     try {
-      const { email } =
+      const dto =
         req.body as ForgotPasswordDto;
 
       const result =
         await this.authService.forgotPassword(
-          email
+          dto
         );
 
       return res
@@ -175,15 +163,12 @@ export class AuthController {
     next: NextFunction
   ) => {
     try {
-      const {
-        token,
-        password,
-      } = req.body as ResetPasswordDto;
+      const dto =
+        req.body as ResetPasswordDto;
 
       const result =
         await this.authService.resetPassword(
-          token,
-          password
+          dto
         );
 
       return res
