@@ -4,46 +4,101 @@ import type { NextFunction, Request, Response } from "express";
 import { ApiError } from "../utils/api-error.js";
 
 export class ValidationMiddleware {
-  validateBody<T>(dtoClass: new () => T) {
-    return async (req: Request, _res: Response, next: NextFunction) => {
-      const dtoInstance = plainToInstance(dtoClass, req.body); //cek dto class nya make plainToInstance from "class-transformer"
-
-      if (!req.body) throw new ApiError("Request body is required", 400); //kita validasi
-
-      const errors = await validate(dtoInstance as any);
-
-      // Jika error generate error nya, sekaligus kirim error message nya ke FE.
-      if (errors.length > 0) {
-        const message = errors
-          .map((error) => Object.values(error.constraints || {}))
-          .flat()
-          .join(", ");
-
-        throw new ApiError(message, 400);
+  validateBody<T>(
+    dtoClass: new () => T
+  ) {
+    return async (
+      req: Request,
+      _res: Response,
+      next: NextFunction
+    ) => {
+      if (!req.body) {
+        return next(
+          new ApiError(
+            "Request body is required",
+            400
+          )
+        );
       }
 
-      // Jika gk ada errornya akan kita masukin dengan hasil validasinya itu
+      const dtoInstance =
+        plainToInstance(
+          dtoClass,
+          req.body
+        );
+
+      const errors =
+        await validate(
+          dtoInstance as object
+        );
+
+      if (errors.length > 0) {
+        const message =
+          errors
+            .map((error) =>
+              Object.values(
+                error.constraints ?? {}
+              )
+            )
+            .flat()
+            .join(", ");
+
+        return next(
+          new ApiError(
+            message,
+            400
+          )
+        );
+      }
+
       req.body = dtoInstance;
 
       next();
     };
   }
-  validateQuery<T>(dtoClass: new () => T) {
-    return async (req: Request, _res: Response, next: NextFunction) => {
-      const dtoInstance = plainToInstance(dtoClass, req.query);
 
-      const errors = await validate(dtoInstance as any);
+  validateQuery<T>(
+    dtoClass: new () => T
+  ) {
+    return async (
+      req: Request,
+      _res: Response,
+      next: NextFunction
+    ) => {
+      const dtoInstance =
+        plainToInstance(
+          dtoClass,
+          req.query
+        );
+
+      const errors =
+        await validate(
+          dtoInstance as object
+        );
 
       if (errors.length > 0) {
-        const message = errors
-          .map((error) => Object.values(error.constraints || {}))
-          .flat()
-          .join(", ");
+        const message =
+          errors
+            .map((error) =>
+              Object.values(
+                error.constraints ?? {}
+              )
+            )
+            .flat()
+            .join(", ");
 
-        throw new ApiError(message, 400);
+        return next(
+          new ApiError(
+            message,
+            400
+          )
+        );
       }
 
-      Object.assign(req.query, dtoInstance);
+      Object.assign(
+        req.query,
+        dtoInstance
+      );
 
       next();
     };
