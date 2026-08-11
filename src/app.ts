@@ -17,6 +17,9 @@ import { ClientRouter } from "./modules/client/client.router.js";
 import { CategoryService } from "./modules/category/category.service.js";
 import { CategoryController } from "./modules/category/category.controller.js";
 import { CategoryRouter } from "./modules/category/category.router.js";
+import { ProductService } from "./modules/product/product.service.js";
+import { ProductController } from "./modules/product/product.controller.js";
+import { ProductRouter } from "./modules/product/product.router.js";
 
 const PORT = 8000;
 
@@ -37,10 +40,8 @@ export class App {
   };
 
   private registerModules = () => {
-    // shared dependency
     const prismaClient = prisma;
 
-    //middlewares
     const authMiddleware = new AuthMiddleware(prismaClient);
     const validationMiddleware = new ValidationMiddleware();
     const uploadMiddleware = new UploadMiddleware();
@@ -56,7 +57,11 @@ export class App {
 
     const categoryService = new CategoryService(prismaClient);
     const categoryController = new CategoryController(categoryService);
-    const categoryRouter = new CategoryRouter(categoryController, authMiddleware, validationMiddleware)
+    const categoryRouter = new CategoryRouter(categoryController, authMiddleware, validationMiddleware);
+
+    const productService = new ProductService(prismaClient);
+    const productController = new ProductController(productService);
+    const productRouter = new ProductRouter(productController, authMiddleware, validationMiddleware)
 
     this.app.use(
       "/auth",
@@ -69,8 +74,13 @@ export class App {
     );
 
     this.app.use(
-      "category",
+      "/category",
       categoryRouter.getRouter()
+    )
+
+    this.app.use(
+      "/product",
+      productRouter.getRouter()
     )
   };
 
