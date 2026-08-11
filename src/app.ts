@@ -14,6 +14,9 @@ import { CloudinaryService } from "./modules/cloudinary/cloudinary.service.js";
 import { ClientService } from "./modules/client/client.service.js";
 import { ClientController } from "./modules/client/client.controller.js";
 import { ClientRouter } from "./modules/client/client.router.js";
+import { CategoryService } from "./modules/category/category.service.js";
+import { CategoryController } from "./modules/category/category.controller.js";
+import { CategoryRouter } from "./modules/category/category.router.js";
 
 const PORT = 8000;
 
@@ -51,6 +54,10 @@ export class App {
     const clientController = new ClientController(clientService);
     const clientRouter = new ClientRouter(clientController, authMiddleware, validationMiddleware);
 
+    const categoryService = new CategoryService(prismaClient);
+    const categoryController = new CategoryController(categoryService);
+    const categoryRouter = new CategoryRouter(categoryController, authMiddleware, validationMiddleware)
+
     this.app.use(
       "/auth",
       authRouter.getRouter()
@@ -60,6 +67,11 @@ export class App {
       "/client",
       clientRouter.getRouter()
     );
+
+    this.app.use(
+      "category",
+      categoryRouter.getRouter()
+    )
   };
 
   private handleError = () => {
