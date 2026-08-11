@@ -11,6 +11,9 @@ import { AuthController } from "./modules/auth/auth.controller.js";
 import { AuthRouter } from "./modules/auth/auth.router.js";
 import { AuthService } from "./modules/auth/auth.service.js";
 import { CloudinaryService } from "./modules/cloudinary/cloudinary.service.js";
+import { ClientService } from "./modules/client/client.service.js";
+import { ClientController } from "./modules/client/client.controller.js";
+import { ClientRouter } from "./modules/client/client.router.js";
 
 const PORT = 8000;
 
@@ -44,9 +47,18 @@ export class App {
     const authController = new AuthController(authService);
     const authRouter = new AuthRouter(authController, validationMiddleware, authMiddleware);
 
+    const clientService = new ClientService(prismaClient);
+    const clientController = new ClientController(clientService);
+    const clientRouter = new ClientRouter(clientController, authMiddleware, validationMiddleware);
+
     this.app.use(
       "/auth",
       authRouter.getRouter()
+    );
+
+    this.app.use(
+      "/client",
+      clientRouter.getRouter()
     );
   };
 
