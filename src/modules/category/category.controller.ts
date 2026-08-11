@@ -1,13 +1,13 @@
 import type { NextFunction, Request, Response } from "express";
 import { ApiError } from "../../utils/api-error.js";
-import type { CreateClientDto, UpdateClientDto } from "./client.dto.js";
-import { ClientService } from "./client.service.js";
+import { CategoryService } from "./category.service.js";
+import type { CreateCategoryDto, UpdateCategoryDto} from "./category.dto.js";
 import { getParamId } from "../../utils/get-param-id.js";
 
-export class ClientController {
-  constructor( private clientService: ClientService ) {}
+export class CategoryController {
+  constructor( private categoryService: CategoryService ) {}
 
-  createClient = async (
+  createCategory = async (
     req: Request,
     res: Response,
     next: NextFunction
@@ -26,26 +26,26 @@ export class ClientController {
       }
 
       const data =
-        req.body as CreateClientDto;
+        req.body as CreateCategoryDto;
 
-      const client =
-        await this.clientService.createClient(
+      const category =
+        await this.categoryService.createCategory(
           userId,
           data
         );
 
       res.status(201).json({
         success: true,
-        message: "Client created successfully",
-        data: client,
+        message: "Category created successfully",
+        data: category,
       });
     } catch (error) {
       next(error);
     }
   };
 
-  getClients = async (
-    req: Request,
+  getCategories = async (
+    _req: Request,
     res: Response,
     next: NextFunction
   ) => {
@@ -62,22 +62,22 @@ export class ClientController {
         );
       }
 
-      const clients =
-        await this.clientService.getClients(
+      const categories =
+        await this.categoryService.getCategories(
           userId
         );
 
       res.status(200).json({
         success: true,
-        message: "Clients retrieved successfully",
-        data: clients,
+        message: "Categories retrieved successfully",
+        data: categories,
       });
     } catch (error) {
       next(error);
     }
   };
 
-  getClientById = async (
+  getCategoryById = async (
     req: Request,
     res: Response,
     next: NextFunction
@@ -100,29 +100,29 @@ export class ClientController {
       if (!id) {
         return next(
           new ApiError(
-            "Client ID is required",
+            "Category ID is required",
             400
           )
         );
       }
 
-      const client =
-        await this.clientService.getClientById(
+      const category =
+        await this.categoryService.getCategoryById(
           userId,
           id
         );
 
       res.status(200).json({
         success: true,
-        message: "Client retrieved successfully",
-        data: client,
+        message: "Category retrieved successfully",
+        data: category,
       });
     } catch (error) {
       next(error);
     }
   };
 
-  updateClient = async (
+  updateCategory = async (
     req: Request,
     res: Response,
     next: NextFunction
@@ -145,17 +145,17 @@ export class ClientController {
       if (!id) {
         return next(
           new ApiError(
-            "Client ID is required",
+            "Category ID is required",
             400
           )
         );
       }
 
       const data =
-        req.body as UpdateClientDto;
+        req.body as UpdateCategoryDto;
 
-      const client =
-        await this.clientService.updateClient(
+      const category =
+        await this.categoryService.updateCategory(
           userId,
           id,
           data
@@ -163,15 +163,15 @@ export class ClientController {
 
       res.status(200).json({
         success: true,
-        message: "Client updated successfully",
-        data: client,
+        message: "Category updated successfully",
+        data: category,
       });
     } catch (error) {
       next(error);
     }
   };
 
-  deleteClient = async (
+  deleteCategory = async (
     req: Request,
     res: Response,
     next: NextFunction
@@ -194,14 +194,14 @@ export class ClientController {
       if (!id) {
         return next(
           new ApiError(
-            "Client ID is required",
+            "Category ID is required",
             400
           )
         );
       }
 
       const result =
-        await this.clientService.deleteClient(
+        await this.categoryService.deleteCategory(
           userId,
           id
         );
