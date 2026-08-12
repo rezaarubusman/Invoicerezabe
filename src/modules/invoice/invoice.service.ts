@@ -1,5 +1,5 @@
 import type { PrismaClient, Prisma } from "@prisma/client";
-import { InvoiceStatus, RecurringInterval } from "@prisma/client";
+import { InvoiceStatus, RecurringInterval, RecurringStatus } from "@prisma/client";
 import { ApiError } from "../../utils/api-error.js";
 import type { CreateInvoiceDto, CreateInvoiceItemDto, UpdateInvoiceDto } from "./invoice.dto.js";
 
@@ -58,11 +58,11 @@ export class InvoiceService {
           return {
             productId: product.id,
             name: product.name,
-            description:
-              item.description ??
-              product.description,
+            description: item.description ?? product.description,
             quantity: item.quantity,
             price: product.price,
+            discount: item.discount ?? 0,
+            tax: item.tax ?? 0,
           };
         }
 
@@ -76,10 +76,11 @@ export class InvoiceService {
         return {
           productId: null,
           name: item.name,
-          description:
-            item.description ?? null,
+          description: item.description ?? null,
           quantity: item.quantity,
           price: item.price,
+          discount: item.discount ?? 0,
+          tax: item.tax ?? 0,
         };
       })
     );
@@ -150,56 +151,53 @@ export class InvoiceService {
               invoiceNumber,
               userId,
               clientId: data.clientId,
-              dueDate: new Date(
-                data.dueDate
-              ),
-              paymentTerms:
-                data.paymentTerms,
-              status:
-                InvoiceStatus.PENDING,
+              dueDate: new Date(data.dueDate),
+              paymentTerms: data.paymentTerms,
+              terms: data.terms,
+              notes: data.notes,
+              status: data.status ?? InvoiceStatus.PENDING,
               isSent: false,
-              isRecurring:
-                data.isRecurring ?? false,
-              recurringInterval:
-                data.isRecurring
-                  ? data.recurringInterval
-                  : null,
-              nextRecurringDate:
-                nextRecurringDate ?? null,
-
+              isRecurring: data.isRecurring ?? false,
+              recurringInterval: data.isRecurring ? data.recurringInterval : null,
+              nextRecurringDate: nextRecurringDate ?? null,
+              endDate: data.endDate? new Date(data.endDate) : null,
+              recurringStatus: data.isRecurring ? (data.recurringStatus ?? RecurringStatus.ACTIVE) : null,
               items: {
                 create: items,
               },
-            },
-
-            include: {
-              client: true,
-              items: {
-                include: {
-                  product: true,
+            
+            activity: {
+              create: [
+                {
+                  label: data.status === InvoiceStatus.DRAFT ? "Invoice drafted" : "Invoice created", 
+                  description: "Inoice was successfully generated.",
                 },
-              },
+              ],
             },
-          });
+          },
+            
+          include: {
+            client: true,
+            items: { include: { product: true }, },
+            activity: { orderBy: { date: 'desc' }}
+          },
+        });
 
         return invoice;
       }
     );
   };
 
-  getInvoices = async ( userId: string ) => {
+  getInvoices = async ( userId: string, isRecurringFilter?: boolean ) => {
     return this.prisma.invoice.findMany({
       where: {
         userId,
+        ...(isRecurringFilter !== undefined && { isRecurring: isRecurringFilter})
       },
 
       include: {
         client: true,
-        items: {
-          include: {
-            product: true,
-          },
-        },
+        items: { include: { product: true }, },
       },
 
       orderBy: {
@@ -218,11 +216,8 @@ export class InvoiceService {
 
         include: {
           client: true,
-          items: {
-            include: {
-              product: true,
-            },
-          },
+          items: { include: { product: true }, },
+          activity: { orderBy: {date: 'desc'}, },
         },
       });
 
@@ -366,6 +361,14 @@ export class InvoiceService {
                 undefined && {
                 nextRecurringDate,
               }),
+
+              ...(data.endDate !== undefined && {
+                endDate: data.endDate ? new Date(data.endDate) : null
+              }),
+
+              ...(data.recurringStatus !== undefined && {
+                RecurringStatus: data.recurringStatus
+              }),
             },
 
             include: {
@@ -383,7 +386,7 @@ export class InvoiceService {
     );
   };
 
-  updateStatus = async ( userId: string, invoiceId: string, status: InvoiceStatus ) => {
+  updateStatus = async ( userId: string, invoiceId: string, status: InvoiceStatus, paymentData?: { paymentMethod?: string; paymentReference?: string; amountPaid?: number } ) => {
     const invoice =
       await this.prisma.invoice.findFirst({
         where: {
@@ -405,18 +408,31 @@ export class InvoiceService {
         "Paid invoice status cannot be changed", 400 );
     }
 
-    return this.prisma.invoice.update({
-      where: {
-        id: invoiceId,
-      },
+    const isPaying = status === InvoiceStatus.PAID;
 
+    return this.prisma.invoice.update({
+      where: { id: invoiceId },
       data: {
         status,
+        ...(isPaying && {
+          paymentDate: new Date(),
+          paymentMethod: paymentData?.paymentMethod || "bank_transfer",
+          paymentReference: paymentData?.paymentReference,
+          amountPaid: paymentData?.amountPaid,
+        }),
+        activity: {
+          create: {
+            label: `Status changed to ${status.toLowerCase()}`,
+            description: isPaying 
+              ? `Payment received via ${paymentData?.paymentMethod || "bank transfer"}`
+              : "Status updated manually",
+          },
+        },
       },
-
       include: {
         client: true,
         items: true,
+        activity: { orderBy: { date: 'desc' } }
       },
     });
   };
