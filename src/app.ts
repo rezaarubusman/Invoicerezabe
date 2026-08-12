@@ -23,8 +23,10 @@ import { ProductRouter } from "./modules/product/product.router.js";
 import { InvoiceService } from "./modules/invoice/invoice.service.js";
 import { InvoiceController } from "./modules/invoice/invoice.controller.js";
 import { InvoiceRouter } from "./modules/invoice/invoice.router.js";
+import { MailService } from "./modules/mail/mail.service.js";
 
 const PORT = 8000;
+
 
 export class App {
   app: express.Express;
@@ -49,8 +51,9 @@ export class App {
     const validationMiddleware = new ValidationMiddleware();
     const uploadMiddleware = new UploadMiddleware();
     const cloudinaryService = new CloudinaryService();
+    const mailService = new MailService();
 
-    const authService = new AuthService(prismaClient);
+    const authService = new AuthService(prismaClient, mailService);
     const authController = new AuthController(authService);
     const authRouter = new AuthRouter(authController, validationMiddleware, authMiddleware);
 

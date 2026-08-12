@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  />
+
+  <title>Verify your email</title>
+</head>
+
+<body
+  style="
+    margin: 0;
+    padding: 0;
+    background-color: #f4f4f5;
+    font-family: Arial, Helvetica, sans-serif;
+  "
+>
+  <table
+    width="100%"
+    cellpadding="0"
+    cellspacing="0"
+    style="padding: 40px 20px;"
+  >
+    <tr>
+      <td align="center">
+
+        <table
+          width="100%"
+          cellpadding="0"
+          cellspacing="0"
+          style="
+            max-width: 600px;
+            background: #ffffff;
+            border-radius: 12px;
+            padding: 40px;
+          "
+        >
+
+          <tr>
+            <td>
+
+              <h1>
+                Welcome to Fakturia, {{name}}!
+              </h1>
+
+              <p>
+                Thank you for creating your Fakturia account.
+              </p>
+
+              <p>
+                Please verify your email address by
+                clicking the button below.
+              </p>
+
+              <p style="margin: 32px 0;">
+                <a
+                  href="{{verificationUrl}}"
+                  style="
+                    display: inline-block;
+                    padding: 12px 24px;
+                    background: #18181b;
+                    color: #ffffff;
+                    text-decoration: none;
+                    border-radius: 8px;
+                  "
+                >
+                  Verify Email
+                </a>
+              </p>
+
+              <p>
+                This verification link will expire in
+                24 hours.
+              </p>
+
+              <p>
+                If you did not create this account,
+                you can safely ignore this email.
+              </p>
+
+              <hr />
+
+              <p style="font-size: 12px; color: #71717a;">
+                Fakturia
+              </p>
+
+            </td>
+          </tr>
+
+        </table>
+
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

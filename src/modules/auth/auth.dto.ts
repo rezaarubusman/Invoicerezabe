@@ -1,4 +1,4 @@
-import { IsEmail, IsNotEmpty, IsString, MinLength } from "class-validator";
+import { IsEmail, IsNotEmpty, IsString, MinLength, Matches } from "class-validator";
 
 export class RegisterDto {
   @IsNotEmpty()
@@ -12,6 +12,22 @@ export class RegisterDto {
   @IsNotEmpty()
   @IsString()
   @MinLength(8)
+  @Matches(/[A-Z]/, {
+    message:
+      "Password must contain at least one uppercase letter",
+  })
+  @Matches(/[a-z]/, {
+    message:
+      "Password must contain at least one lowercase letter",
+  })
+  @Matches(/\d/, {
+    message:
+      "Password must contain at least one number",
+  })
+  @Matches(/[^A-Za-z0-9]/, {
+    message:
+      "Password must contain at least one special character",
+  })
   password!: string;
 }
 
@@ -51,5 +67,48 @@ export class ResetPasswordDto {
   @IsNotEmpty()
   @IsString()
   @MinLength(8)
+  @Matches(/[A-Z]/, {
+    message:
+      "Password must contain at least one uppercase letter",
+  })
+  @Matches(/[a-z]/, {
+    message:
+      "Password must contain at least one lowercase letter",
+  })
+  @Matches(/\d/, {
+    message:
+      "Password must contain at least one number",
+  })
+  @Matches(/[^A-Za-z0-9]/, {
+    message:
+      "Password must contain at least one special character",
+  })
   password!: string;
+}
+
+export class ChangePasswordDto {
+  @IsNotEmpty()
+  @IsString()
+  currentPassword!: string;
+
+  @IsNotEmpty()
+  @IsString()
+  @MinLength(8)
+  @Matches(/[A-Z]/, {
+    message:
+      "Password must contain at least one uppercase letter",
+  })
+  @Matches(/[a-z]/, {
+    message:
+      "Password must contain at least one lowercase letter",
+  })
+  @Matches(/\d/, {
+    message:
+      "Password must contain at least one number",
+  })
+  @Matches(/[^A-Za-z0-9]/, {
+    message:
+      "Password must contain at least one special character",
+  })
+  newPassword!: string;
 }
