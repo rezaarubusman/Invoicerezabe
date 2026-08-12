@@ -1,6 +1,6 @@
 import { IsArray, IsBoolean, IsDateString, IsEnum, IsInt, IsNumber, IsOptional, IsString, IsUUID, Max, MaxLength, Min, MinLength, ValidateIf, ValidateNested } from "class-validator";
 import { Type } from "class-transformer";
-import { InvoiceStatus, RecurringInterval } from "@prisma/client";
+import { InvoiceStatus, RecurringInterval, RecurringStatus } from "@prisma/client";
 
 export class CreateInvoiceItemDto {
   @IsOptional()
@@ -30,6 +30,18 @@ export class CreateInvoiceItemDto {
   )
   @Min(0)
   price?: number;
+
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  @Max(100)
+  discount?: number;
+
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  @Max(100)
+  tax?: number;
 }
 
 export class CreateInvoiceDto {
@@ -60,6 +72,28 @@ export class CreateInvoiceDto {
   @ValidateNested({ each: true })
   @Type(() => CreateInvoiceItemDto)
   items!: CreateInvoiceItemDto[];
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  terms?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  notes?: string;
+
+  @IsOptional()
+  @IsEnum(InvoiceStatus)
+  status?: InvoiceStatus;
+
+  @IsOptional()
+  @IsDateString()
+  endDate?: string;
+
+  @IsOptional()
+  @IsEnum(RecurringStatus)
+  recurringStatus?: RecurringStatus;
 }
 
 export class UpdateInvoiceDto {
@@ -93,9 +127,32 @@ export class UpdateInvoiceDto {
   @ValidateNested({ each: true })
   @Type(() => CreateInvoiceItemDto)
   items?: CreateInvoiceItemDto[];
+
+  @IsOptional()
+  @IsDateString()
+  endDate?: string;
+
+  @IsOptional()
+  @IsEnum(RecurringStatus)
+  recurringStatus?: RecurringStatus
 }
 
 export class UpdateInvoiceStatusDto {
   @IsEnum(InvoiceStatus)
   status!: InvoiceStatus;
+
+  @ValidateIf((o) => o.status === InvoiceStatus.PAID)
+  @IsOptional()
+  @IsString()
+  paymentMethod?: string;
+
+  @ValidateIf((o) => o.status === InvoiceStatus.PAID)
+  @IsOptional()
+  @IsString()
+  paymentReference?: string;
+
+  @ValidateIf((o) => o.status === InvoiceStatus.PAID)
+  @IsOptional()
+  @IsNumber()
+  amountPaid?: number;
 }
