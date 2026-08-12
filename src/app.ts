@@ -20,8 +20,13 @@ import { CategoryRouter } from "./modules/category/category.router.js";
 import { ProductService } from "./modules/product/product.service.js";
 import { ProductController } from "./modules/product/product.controller.js";
 import { ProductRouter } from "./modules/product/product.router.js";
+import { InvoiceService } from "./modules/invoice/invoice.service.js";
+import { InvoiceController } from "./modules/invoice/invoice.controller.js";
+import { InvoiceRouter } from "./modules/invoice/invoice.router.js";
+import { MailService } from "./modules/mail/mail.service.js";
 
 const PORT = 8000;
+
 
 export class App {
   app: express.Express;
@@ -46,8 +51,9 @@ export class App {
     const validationMiddleware = new ValidationMiddleware();
     const uploadMiddleware = new UploadMiddleware();
     const cloudinaryService = new CloudinaryService();
+    const mailService = new MailService();
 
-    const authService = new AuthService(prismaClient);
+    const authService = new AuthService(prismaClient, mailService);
     const authController = new AuthController(authService);
     const authRouter = new AuthRouter(authController, validationMiddleware, authMiddleware);
 
@@ -61,7 +67,11 @@ export class App {
 
     const productService = new ProductService(prismaClient);
     const productController = new ProductController(productService);
-    const productRouter = new ProductRouter(productController, authMiddleware, validationMiddleware)
+    const productRouter = new ProductRouter(productController, authMiddleware, validationMiddleware);
+
+    const invoiceService = new InvoiceService(prismaClient);
+    const invoiceController = new InvoiceController(invoiceService);
+    const invoiceRouter = new InvoiceRouter(invoiceController, authMiddleware, validationMiddleware)
 
     this.app.use(
       "/auth",
@@ -81,6 +91,11 @@ export class App {
     this.app.use(
       "/product",
       productRouter.getRouter()
+    )
+
+    this.app.use(
+      "/invoice",
+      invoiceRouter.getRouter()
     )
   };
 

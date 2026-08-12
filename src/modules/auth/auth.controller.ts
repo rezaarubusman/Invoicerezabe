@@ -1,15 +1,11 @@
 import type { NextFunction, Request, Response } from "express";
 import { AuthService } from "./auth.service.js";
-import type { RegisterDto, LoginDto, VerifyEmailDto, ResendVerificationDto, ForgotPasswordDto, ResetPasswordDto } from "./auth.dto.js";
+import type { RegisterDto, LoginDto, VerifyEmailDto, ResendVerificationDto, ForgotPasswordDto, ResetPasswordDto, ChangePasswordDto } from "./auth.dto.js";
 
 export class AuthController {
   constructor( private authService: AuthService ) {}
 
-  register = async (
-    req: Request,
-    res: Response,
-    next: NextFunction
-  ) => {
+  register = async ( req: Request, res: Response, next: NextFunction ) => {
     try {
       const dto =
         req.body as RegisterDto;
@@ -25,11 +21,7 @@ export class AuthController {
     }
   };
 
-  login = async (
-    req: Request,
-    res: Response,
-    next: NextFunction
-  ) => {
+  login = async ( req: Request, res: Response, next: NextFunction ) => {
     try {
       const dto =
         req.body as LoginDto;
@@ -45,11 +37,7 @@ export class AuthController {
     }
   };
 
-  logout = async (
-    _req: Request,
-    res: Response,
-    next: NextFunction
-  ) => {
+  logout = async ( _req: Request, res: Response, next: NextFunction ) => {
     try {
       const user =
         res.locals.user;
@@ -67,11 +55,7 @@ export class AuthController {
     }
   };
 
-  me = async (
-    _req: Request,
-    res: Response,
-    next: NextFunction
-  ) => {
+  me = async ( _req: Request, res: Response, next: NextFunction ) => {
     try {
       const user =
         res.locals.user;
@@ -91,11 +75,7 @@ export class AuthController {
     }
   };
 
-  verifyEmail = async (
-    req: Request,
-    res: Response,
-    next: NextFunction
-  ) => {
+  verifyEmail = async ( req: Request, res: Response, next: NextFunction ) => {
     try {
       const dto =
         req.body as VerifyEmailDto;
@@ -113,11 +93,7 @@ export class AuthController {
     }
   };
 
-  resendVerification = async (
-    req: Request,
-    res: Response,
-    next: NextFunction
-  ) => {
+  resendVerification = async ( req: Request, res: Response, next: NextFunction ) => {
     try {
       const dto =
         req.body as ResendVerificationDto;
@@ -135,11 +111,7 @@ export class AuthController {
     }
   };
 
-  forgotPassword = async (
-    req: Request,
-    res: Response,
-    next: NextFunction
-  ) => {
+  forgotPassword = async ( req: Request, res: Response, next: NextFunction ) => {
     try {
       const dto =
         req.body as ForgotPasswordDto;
@@ -157,17 +129,35 @@ export class AuthController {
     }
   };
 
-  resetPassword = async (
-    req: Request,
-    res: Response,
-    next: NextFunction
-  ) => {
+  resetPassword = async ( req: Request, res: Response, next: NextFunction ) => {
     try {
       const dto =
         req.body as ResetPasswordDto;
 
       const result =
         await this.authService.resetPassword(
+          dto
+        );
+
+      return res
+        .status(200)
+        .json(result);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  changePassword = async ( req: Request, res: Response, next: NextFunction ) => {
+    try {
+      const user =
+        res.locals.user;
+
+      const dto =
+        req.body as ChangePasswordDto;
+
+      const result =
+        await this.authService.changePassword(
+          user.id,
           dto
         );
 

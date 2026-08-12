@@ -1,136 +1,188 @@
 import argon2 from "argon2";
-import { randomUUID } from "crypto";
+import { randomUUID } from "node:crypto";
 import type { PrismaClient } from "@prisma/client";
 import { ApiError } from "../../utils/api-error.js";
 import { generateAccessToken } from "../../lib/jwt.js";
-import type { RegisterDto, LoginDto, VerifyEmailDto, ResendVerificationDto, ForgotPasswordDto, ResetPasswordDto } from "./auth.dto.js";
+import { MailService } from "../../modules/mail/mail.service.js";
+import type { RegisterDto, LoginDto, VerifyEmailDto, ResendVerificationDto, ForgotPasswordDto, ResetPasswordDto, ChangePasswordDto } from "./auth.dto.js";
 
 export class AuthService {
-  constructor( private prisma: PrismaClient ) {}
+  constructor(
+    private prisma: PrismaClient,
+    private mailService: MailService,
+  ) {}
 
   register = async (dto: RegisterDto) => {
-  const { name, email, password } = dto;
-  const normalizedEmail =
-    email.trim().toLowerCase();
-  const existingUser =
-    await this.prisma.user.findUnique({
-      where: {
-        email: normalizedEmail,
-      },
-    });
+    const { name, email, password } = dto;
 
-  if (existingUser) {
-    throw new ApiError( "Email is already registered", 409 );
-  }
-  const hashedPassword =
-    await argon2.hash(password);
-  const verificationToken =
-    randomUUID();
-  const verificationTokenExpiresAt =
-    new Date(
-      Date.now() +
-        24 * 60 * 60 * 1000
-    );
-  const user =
-    await this.prisma.user.create({
-      data: {
-        name,
-        email: normalizedEmail,
-        password: hashedPassword,
+    const normalizedEmail =
+      email.trim().toLowerCase();
+
+    const normalizedName =
+      name.trim();
+
+    const existingUser =
+      await this.prisma.user.findUnique({
+        where: {
+          email: normalizedEmail,
+        },
+      });
+
+    if (existingUser) {
+      throw new ApiError( "Email is already registered", 409 );
+    }
+
+    const hashedPassword =
+      await argon2.hash(password);
+
+    const verificationToken =
+      randomUUID();
+
+    const verificationTokenExpiresAt =
+      new Date(
+        Date.now() +
+          24 * 60 * 60 * 1000,
+      );
+
+    const user =
+      await this.prisma.user.create({
+        data: {
+          name: normalizedName,
+          email: normalizedEmail,
+          password: hashedPassword,
+          verificationToken,
+          verificationTokenExpiresAt,
+        },
+
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+          isEmailVerified: true,
+          createdAt: true,
+        },
+      });
+
+    const frontendUrl =
+      process.env.FRONTEND_URL ?? "http://localhost:5173";
+
+    const verificationUrl =
+      `${frontendUrl}/verify-email?token=${encodeURIComponent(
         verificationToken,
-        verificationTokenExpiresAt,
-      },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        role: true,
-        isEmailVerified: true,
-        createdAt: true,
-      },
-    });
+      )}`;
 
-  return {
-    message: "Registration successful. Please verify your email.", user };
+    try {
+      await this.mailService.sendEmail(
+        user.email,
+        "Verify your Fakturia account",
+        "verify-email",
+        {
+          name: user.name,
+          verificationUrl,
+        },
+      );
+    } catch (error) {
+      console.error(
+        "Failed to send verification email:",
+        error,
+      );
+    }
+
+    return {
+      message: "Registration successful. Please check your email to verify your account.", user };
   };
 
   login = async (dto: LoginDto) => {
     const { email, password } = dto;
+
     const normalizedEmail =
-        email.trim().toLowerCase();
+      email.trim().toLowerCase();
+
     const user =
-        await this.prisma.user.findUnique({
+      await this.prisma.user.findUnique({
         where: {
-            email: normalizedEmail,
+          email: normalizedEmail,
         },
-        });
+      });
 
     if (!user) {
-        throw new ApiError( "Invalid email or password", 401 );
+      throw new ApiError( "Invalid email or password", 401 );
     }
 
     const isPasswordValid =
-        await argon2.verify(
+      await argon2.verify(
         user.password,
-        password
-        );
+        password,
+      );
 
     if (!isPasswordValid) {
-        throw new ApiError(
-        "Invalid email or password",
-        401
-        );
+      throw new ApiError( "Invalid email or password", 401 );
     }
 
-    /*
     if (!user.isEmailVerified) {
-        throw new ApiError(
-        "Please verify your email first",
-        403
-        );
+      throw new ApiError( "Please verify your email first", 403 );
     }
-    */
 
     const sessionId =
-        randomUUID();
+      randomUUID();
 
     await this.prisma.user.update({
-        where: {
+      where: {
         id: user.id,
-        },
-        data: {
+      },
+
+      data: {
         activeSessionId: sessionId,
-        },
+      },
     });
 
     const accessToken =
-        generateAccessToken({
+      generateAccessToken({
         id: user.id,
         email: user.email,
         name: user.name,
         role: user.role,
         sessionId,
-        });
+      });
 
     return {
-        message: "Login successful",
-        accessToken,
-        user: {
+      message: "Login successful",
+
+      accessToken,
+
+      user: {
         id: user.id,
         name: user.name,
         email: user.email,
         role: user.role,
         isEmailVerified:
-            user.isEmailVerified,
-        },
-        };
+          user.isEmailVerified,
+      },
     };
+  };
 
   logout = async ( userId: string ) => {
+    const user =
+      await this.prisma.user.findUnique({
+        where: {
+          id: userId,
+        },
+
+        select: {
+          id: true,
+        },
+      });
+
+    if (!user) {
+      throw new ApiError( "User not found", 404 );
+    }
+
     await this.prisma.user.update({
       where: {
         id: userId,
       },
+
       data: {
         activeSessionId: null,
       },
@@ -157,162 +209,344 @@ export class AuthService {
         },
       });
 
-    if (!user) { throw new ApiError( "User not found", 404 );}
+    if (!user) {
+      throw new ApiError( "User not found", 404 );
+    }
+
     return user;
   };
 
   verifyEmail = async ( dto: VerifyEmailDto ) => {
     const { token } = dto;
+
     const user =
-        await this.prisma.user.findFirst({
+      await this.prisma.user.findFirst({
         where: {
-            verificationToken: token,
+          verificationToken: token,
         },
-        });
+      });
 
     if (!user) {
-        throw new ApiError( "Invalid verification token", 400 );
+      throw new ApiError( "Invalid verification token", 400 );
     }
 
     if (
-        !user.verificationTokenExpiresAt ||
-        user.verificationTokenExpiresAt < new Date()
+      !user.verificationTokenExpiresAt ||
+      user.verificationTokenExpiresAt <
+        new Date()
     ) {
-        throw new ApiError( "Verification token has expired", 400 );
+      throw new ApiError( "Verification token has expired", 400 );
     }
 
     await this.prisma.user.update({
-        where: {
+      where: {
         id: user.id,
-        },
-        data: {
+      },
+
+      data: {
         isEmailVerified: true,
         verificationToken: null,
-        verificationTokenExpiresAt: null,
-        },
+        verificationTokenExpiresAt:
+          null,
+      },
     });
 
     return {
-        message: "Email verified successfully" };
-    };
+      message: "Email verified successfully" };
+  };
 
   resendVerification = async ( dto: ResendVerificationDto ) => {
     const { email } = dto;
+
     const normalizedEmail =
-        email.trim().toLowerCase();
+      email.trim().toLowerCase();
+
     const user =
-        await this.prisma.user.findUnique({
+      await this.prisma.user.findUnique({
         where: {
-            email: normalizedEmail,
+          email: normalizedEmail,
         },
-        });
+      });
 
     if (!user) {
-        return {
-        message: "If the email exists, a verification email has been sent." };
+      return {
+        message:
+          "If the email exists, a verification email has been sent.",
+      };
     }
 
     if (user.isEmailVerified) {
-        return {
-        message: "Email is already verified." };
+      return {
+        message:
+          "Email is already verified.",
+      };
     }
 
     const verificationToken =
-        randomUUID();
+      randomUUID();
+
     const verificationTokenExpiresAt =
-        new Date(
+      new Date(
         Date.now() +
-            24 * 60 * 60 * 1000
-        );
+          24 * 60 * 60 * 1000,
+      );
 
     await this.prisma.user.update({
-        where: {
+      where: {
         id: user.id,
-        },
-        data: {
+      },
+
+      data: {
         verificationToken,
         verificationTokenExpiresAt,
-        },
+      },
     });
 
+    const frontendUrl =
+      process.env.FRONTEND_URL ??
+      "http://localhost:5173";
+
+    const verificationUrl =
+      `${frontendUrl}/verify-email?token=${encodeURIComponent(
+        verificationToken,
+      )}`;
+
+    try {
+      await this.mailService.sendEmail(
+        user.email,
+        "Verify your Fakturia account",
+        "resend-verification",
+        {
+          name: user.name,
+          verificationUrl,
+        },
+      );
+    } catch (error) {
+      console.error(
+        "Failed to resend verification email:",
+        error,
+      );
+    }
+
     return {
-        message: "If the email exists, a verification email has been sent." };
-    };
+      message: "If the email exists, a verification email has been sent." };
+  };
 
   forgotPassword = async ( dto: ForgotPasswordDto ) => {
     const { email } = dto;
+
     const normalizedEmail =
-        email.trim().toLowerCase();
+      email.trim().toLowerCase();
+
     const user =
-        await this.prisma.user.findUnique({
+      await this.prisma.user.findUnique({
         where: {
-            email: normalizedEmail,
+          email: normalizedEmail,
         },
-        });
+      });
 
     if (!user) {
-        return {
-        message: "If the email exists, a password reset email has been sent." };
+      return {
+        message:
+          "If the email exists, a password reset email has been sent.",
+      };
     }
 
     const resetPasswordToken =
-        randomUUID();
+      randomUUID();
+
     const resetPasswordExpiresAt =
-        new Date(
+      new Date(
         Date.now() +
-            15 * 60 * 1000
-        );
+          15 * 60 * 1000,
+      );
 
     await this.prisma.user.update({
-        where: {
+      where: {
         id: user.id,
-        },
-        data: {
+      },
+
+      data: {
         resetPasswordToken,
         resetPasswordExpiresAt,
-        },
+      },
     });
 
-    return {
-        message: "If the email exists, a password reset email has been sent." };
-    };
+    const frontendUrl =
+      process.env.FRONTEND_URL ??
+      "http://localhost:5173";
 
-resetPassword = async ( dto: ResetPasswordDto ) => {
-    const { token, password } = dto;
-    const user =
-        await this.prisma.user.findFirst({
-        where: {
-            resetPasswordToken: token,
+    const resetUrl =
+      `${frontendUrl}/reset-password?token=${encodeURIComponent(
+        resetPasswordToken,
+      )}`;
+
+    try {
+      await this.mailService.sendEmail(
+        user.email,
+        "Reset your Fakturia password",
+        "forgot-password",
+        {
+          name: user.name,
+          resetUrl,
         },
-        });
+      );
+    } catch (error) {
+      console.error(
+        "Failed to send password reset email:",
+        error,
+      );
+    }
+
+    return {
+      message: "If the email exists, a password reset email has been sent." };
+  };
+
+  resetPassword = async ( dto: ResetPasswordDto ) => {
+    const { token, password } = dto;
+
+    const user =
+      await this.prisma.user.findFirst({
+        where: {
+          resetPasswordToken: token,
+        },
+      });
 
     if (!user) {
-        throw new ApiError( "Invalid reset token", 400 );
+      throw new ApiError( "Invalid reset token", 400 );
     }
 
     if (
-        !user.resetPasswordExpiresAt ||
-        user.resetPasswordExpiresAt < new Date()
+      !user.resetPasswordExpiresAt ||
+      user.resetPasswordExpiresAt <
+        new Date()
     ) {
-        throw new ApiError( "Reset token has expired", 400 );
+      throw new ApiError( "Reset token has expired", 400 );
     }
 
     const hashedPassword =
-        await argon2.hash(password);
+      await argon2.hash(password);
 
     await this.prisma.user.update({
-        where: {
+      where: {
         id: user.id,
-        },
-        data: {
+      },
+
+      data: {
         password: hashedPassword,
         resetPasswordToken: null,
         resetPasswordExpiresAt: null,
+
         activeSessionId: null,
-        },
+      },
     });
 
+    const frontendUrl =
+      process.env.FRONTEND_URL ??
+      "http://localhost:5173";
+
+    const loginUrl =
+      `${frontendUrl}/login`;
+
+    try {
+      await this.mailService.sendEmail(
+        user.email,
+        "Your Fakturia password was changed",
+        "reset-password",
+        {
+          name: user.name,
+          loginUrl,
+        },
+      );
+    } catch (error) {
+      console.error(
+        "Failed to send password reset confirmation email:",
+        error,
+      );
+    }
+
     return {
-        message: "Password reset successfully. Please login again."};
-    };
+      message: "Password reset successfully. Please login again." };
+  };
+
+  changePassword = async (
+    userId: string,
+    dto: ChangePasswordDto
+  ) => {
+    const {
+      currentPassword,
+      newPassword,
+    } = dto;
+
+    const user =
+      await this.prisma.user.findUnique({
+        where: {
+          id: userId,
+        },
+      });
+
+    if (!user) {
+      throw new ApiError( "User not found", 404 );
+    }
+
+    const isCurrentPasswordValid =
+      await argon2.verify(
+        user.password,
+        currentPassword,
+      );
+
+    if (!isCurrentPasswordValid) {
+      throw new ApiError( "Current password is incorrect", 400 );
+    }
+
+    const isSamePassword =
+      await argon2.verify(
+        user.password,
+        newPassword,
+      );
+
+    if (isSamePassword) {
+      throw new ApiError( "New password must be different from current password", 400 );
+    }
+
+    const hashedPassword =
+      await argon2.hash(newPassword);
+
+    await this.prisma.user.update({
+      where: {
+        id: user.id,
+      },
+
+      data: {
+        password: hashedPassword,
+        resetPasswordToken: null,
+        resetPasswordExpiresAt: null,
+      },
+    });
+
+    const frontendUrl =
+      process.env.FRONTEND_URL ??
+      "http://localhost:5173";
+
+    try {
+      await this.mailService.sendEmail(
+        user.email,
+        "Your Fakturia password was changed",
+        "reset-password",
+        {
+          name: user.name,
+          loginUrl:
+            `${frontendUrl}/login`,
+        },
+      );
+    } catch (error) {
+      console.error(
+        "Failed to send password change confirmation email:",
+        error,
+      );
+    }
+
+    return {
+      message: "Password changed successfully" };
+  };
 }
