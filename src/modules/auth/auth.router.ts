@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { AuthController } from "./auth.controller.js";
-import { RegisterDto, LoginDto, VerifyEmailDto, ResendVerificationDto, ForgotPasswordDto, ResetPasswordDto } from "./auth.dto.js";
+import { RegisterDto, LoginDto, VerifyEmailDto, ResendVerificationDto, ForgotPasswordDto, ResetPasswordDto, ChangePasswordDto } from "./auth.dto.js";
 import { ValidationMiddleware } from "../../middlewares/validation.middleware.js";
 import { AuthMiddleware } from "../../middlewares/auth.middleware.js";
 
@@ -60,6 +60,15 @@ export class AuthRouter {
         ResetPasswordDto
       ),
       this.authController.resetPassword
+    );
+
+    this.router.patch(
+      "/change-password",
+      this.authMiddleware.verifyToken,
+      this.validationMiddleware.validateBody(
+        ChangePasswordDto
+      ),
+      this.authController.changePassword
     );
 
     this.router.get(

@@ -1,6 +1,6 @@
 import type { NextFunction, Request, Response } from "express";
 import { AuthService } from "./auth.service.js";
-import type { RegisterDto, LoginDto, VerifyEmailDto, ResendVerificationDto, ForgotPasswordDto, ResetPasswordDto } from "./auth.dto.js";
+import type { RegisterDto, LoginDto, VerifyEmailDto, ResendVerificationDto, ForgotPasswordDto, ResetPasswordDto, ChangePasswordDto } from "./auth.dto.js";
 
 export class AuthController {
   constructor( private authService: AuthService ) {}
@@ -168,6 +168,32 @@ export class AuthController {
 
       const result =
         await this.authService.resetPassword(
+          dto
+        );
+
+      return res
+        .status(200)
+        .json(result);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  changePassword = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
+    try {
+      const user =
+        res.locals.user;
+
+      const dto =
+        req.body as ChangePasswordDto;
+
+      const result =
+        await this.authService.changePassword(
+          user.id,
           dto
         );
 
