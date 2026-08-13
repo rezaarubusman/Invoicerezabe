@@ -35,6 +35,22 @@ enum Role {
   CUSTOMER
 }
 
+enum ProductType {
+  PRODUCT
+  SERVICE
+}
+
+enum ItemStatus {
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+}
+
+enum CategoryStatus {
+  ACTIVE
+  ARCHIVED
+}
+
 model User {
   id                        String     @id @default(uuid())
   email                     String     @unique
@@ -79,6 +95,8 @@ model Category {
   id          String    @id @default(uuid())
   userId      String
   name        String
+  description String?        @db.Text             
+  status      CategoryStatus @default(ACTIVE)
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   products    Product[]
   deletedAt   DateTime? 
@@ -88,12 +106,16 @@ model Category {
 }
 
 model Product {
-  id          String    @id @default(uuid())
+  id          String        @id @default(uuid())
   userId      String
   categoryId  String?
   name        String
-  description String?   @db.Text
-  price       Decimal   @db.Decimal(12, 2)
+  type        ProductType   @default(SERVICE)     
+  description String?       @db.Text
+  price       Decimal       @db.Decimal(12, 2)
+  unit        String        @default("pcs")       
+  tax         Decimal       @default(0) @db.Decimal(5, 2) 
+  status      ItemStatus    @default(ACTIVE)      
   
   user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   category    Category?     @relation(fields: [categoryId], references: [id], onDelete: SetNull)

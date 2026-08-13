@@ -24,6 +24,8 @@ export class CategoryService {
         data: {
           userId,
           name: data.name,
+          description: data.description || "",
+          status: "ACTIVE",
         },
       });
 
@@ -36,9 +38,7 @@ export class CategoryService {
         userId,
         deletedAt: null,
       },
-      orderBy: {
-        createdAt: "desc",
-      },
+      orderBy: { createdAt: "desc" },
     });
   };
 
@@ -80,9 +80,7 @@ export class CategoryService {
             userId,
             name: data.name,
             deletedAt: null,
-            NOT: {
-              id: categoryId,
-            },
+            NOT: { id: categoryId },
           },
         });
 
@@ -96,9 +94,9 @@ export class CategoryService {
         id: categoryId,
       },
       data: {
-        ...(data.name !== undefined && {
-          name: data.name,
-        }),
+        ...(data.name !== undefined && { name: data.name }),
+        ...(data.description !== undefined && { description: data.description}),
+        ...(data.status !== undefined && { status: data.status === "active" ? "ACTIVE" : "ARCHIVED" }),
       },
     });
   };
@@ -118,14 +116,10 @@ export class CategoryService {
     }
 
     await this.prisma.category.update({
-      where: {
-        id: categoryId,
-      },
-      data: {
-        deletedAt: new Date(),
-      },
+      where: { id: categoryId },
+      data: { status: "ARCHIVED", deletedAt: new Date() },
     });
 
-    return { message: "Category deleted successfully" };
+    return { message: "Category archived successfully" };
   };
 }

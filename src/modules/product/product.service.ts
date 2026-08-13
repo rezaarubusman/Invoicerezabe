@@ -39,13 +39,15 @@ export class ProductService {
         data: {
           userId,
           name: data.name,
-          description: data.description,
+          type: data.type === "product" ? "PRODUCT" : "SERVICE",
+          description: data.description || "",
           price: data.price,
+          unit: data.unit,
+          tax: data.tax,
+          status: data.status ? (data.status.toUpperCase() as any) : "ACTIVE",
           categoryId: data.categoryId,
         },
-        include: {
-          category: true,
-        },
+        include: { category: true },
       });
 
     return product;
@@ -57,12 +59,8 @@ export class ProductService {
         userId,
         deletedAt: null,
       },
-      include: {
-        category: true,
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
+      include: { category: true },
+      orderBy: { createdAt: "desc" },
     });
   };
 
@@ -74,9 +72,7 @@ export class ProductService {
           userId,
           deletedAt: null,
         },
-        include: {
-          category: true,
-        },
+        include: { category: true },
       });
 
     if (!product) {
@@ -137,29 +133,18 @@ export class ProductService {
 
     const updatedProduct =
       await this.prisma.product.update({
-        where: {
-          id: productId,
-        },
+        where: { id: productId },
         data: {
-          ...(data.name !== undefined && {
-            name: data.name,
-          }),
-
-          ...(data.description !== undefined && {
-            description: data.description,
-          }),
-
-          ...(data.price !== undefined && {
-            price: data.price,
-          }),
-
-          ...(data.categoryId !== undefined && {
-            categoryId: data.categoryId,
-          }),
+          ...(data.name !== undefined && { name: data.name }),
+          ...(data.type !== undefined && { type: data.type === "product" ? "PRODUCT" : "SERVICE"}),
+          ...(data.description !== undefined && { description: data.description }),
+          ...(data.price !== undefined && { price: data.price }),
+          ...(data.unit !== undefined && { unit: data.unit}),
+          ...(data.tax !== undefined && { tax: data.tax}),
+          ...(data.status !== undefined && { status: data.status.toUpperCase() as any}),
+          ...(data.categoryId !== undefined && { categoryId: data.categoryId }),
         },
-        include: {
-          category: true,
-        },
+        include: { category: true },
       });
 
     return updatedProduct;
@@ -180,14 +165,13 @@ export class ProductService {
     }
 
     await this.prisma.product.update({
-      where: {
-        id: productId,
-      },
+      where: { id: productId },
       data: {
+        status: "ARCHIVED",
         deletedAt: new Date(),
       },
     });
 
-    return { message: "Product deleted successfully" };
+    return { message: "Product archived successfully" };
   };
 }
