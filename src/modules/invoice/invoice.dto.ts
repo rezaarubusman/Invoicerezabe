@@ -29,7 +29,7 @@ export class CreateInvoiceItemDto {
     { message: "Price must be a valid number with maximum 2 decimal places" }
   )
   @Min(0)
-  price?: number;
+  unitPrice?: number;
 
   @IsOptional()
   @IsNumber({ maxDecimalPlaces: 2 })
@@ -45,11 +45,19 @@ export class CreateInvoiceItemDto {
 }
 
 export class CreateInvoiceDto {
+  @IsString()
+  @MinLength(3)
+  number!: string; 
+
   @IsUUID()
   clientId!: string;
 
   @IsDateString()
   dueDate!: string;
+
+  @IsString()
+  @MinLength(1)
+  currency!: string;
 
   @IsOptional()
   @IsString()
@@ -97,6 +105,11 @@ export class CreateInvoiceDto {
 }
 
 export class UpdateInvoiceDto {
+  @IsOptional() 
+  @IsString()
+  @MinLength(3)
+  number?: string;
+
   @IsOptional()
   @IsUUID()
   clientId?: string;
@@ -104,6 +117,10 @@ export class UpdateInvoiceDto {
   @IsOptional()
   @IsDateString()
   dueDate?: string;
+
+  @IsOptional()
+  @IsString()
+  currency!: string;
 
   @IsOptional()
   @IsString()

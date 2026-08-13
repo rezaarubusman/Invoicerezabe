@@ -60,16 +60,13 @@ export class InvoiceService {
             name: product.name,
             description: item.description ?? product.description,
             quantity: item.quantity,
-            price: product.price,
+            unitPrice: Number(product.price),
             discount: item.discount ?? 0,
             tax: item.tax ?? 0,
           };
         }
 
-        if (
-          !item.name ||
-          item.price === undefined
-        ) {
+        if ( !item.name || item.unitPrice === undefined ) {
           throw new ApiError( "Custom invoice item requires name and price", 400 );
         }
 
@@ -78,7 +75,7 @@ export class InvoiceService {
           name: item.name,
           description: item.description ?? null,
           quantity: item.quantity,
-          price: item.price,
+          unitPrice: item.unitPrice,
           discount: item.discount ?? 0,
           tax: item.tax ?? 0,
         };
@@ -101,25 +98,18 @@ export class InvoiceService {
           throw new ApiError( "Client not found", 404 );
         }
 
-        if (
-          data.isRecurring === true &&
-          !data.recurringInterval
-        ) {
+        if ( data.isRecurring === true && !data.recurringInterval ) {
           throw new ApiError( "Recurring interval is required for recurring invoice", 400 );
         }
 
-        let invoiceNumber =
-          this.generateInvoiceNumber();
+        let invoiceNumber = data.number || this.generateInvoiceNumber();
 
         while (
           await tx.invoice.findUnique({
-            where: {
-              invoiceNumber,
-            },
+            where: { number: invoiceNumber },
           })
         ) {
-          invoiceNumber =
-            this.generateInvoiceNumber();
+          invoiceNumber = this.generateInvoiceNumber();
         }
 
         const items =
@@ -129,29 +119,24 @@ export class InvoiceService {
             data.items
           );
 
-        let nextRecurringDate:
-          | Date
-          | undefined;
+        let nextRecurringDate: Date | undefined;
 
         if (data.isRecurring === true) {
           nextRecurringDate =
             data.nextRecurringDate
               ? new Date(
-                  data.nextRecurringDate
-                )
-              : this.calculateNextRecurringDate(
-                  new Date(data.dueDate),
-                  data.recurringInterval!
-                );
+                  data.nextRecurringDate)
+              : this.calculateNextRecurringDate( new Date(data.dueDate), data.recurringInterval! );
         }
 
         const invoice =
           await tx.invoice.create({
             data: {
-              invoiceNumber,
+              number: invoiceNumber,
               userId,
               clientId: data.clientId,
               dueDate: new Date(data.dueDate),
+              currency: data.currency,
               paymentTerms: data.paymentTerms,
               terms: data.terms,
               notes: data.notes,
@@ -192,17 +177,14 @@ export class InvoiceService {
     return this.prisma.invoice.findMany({
       where: {
         userId,
-        ...(isRecurringFilter !== undefined && { isRecurring: isRecurringFilter})
-      },
+        ...(isRecurringFilter !== undefined && { isRecurring: isRecurringFilter})},
 
       include: {
         client: true,
         items: { include: { product: true }, },
       },
 
-      orderBy: {
-        createdAt: "desc",
-      },
+      orderBy: { createdAt: "desc" },
     });
   };
 
@@ -289,14 +271,11 @@ export class InvoiceService {
           await tx.invoiceItem.createMany({
             data: items.map((item) => ({
               invoiceId,
-              productId:
-                item.productId,
+              productId: item.productId,
               name: item.name,
-              description:
-                item.description,
-              quantity:
-                item.quantity,
-              price: item.price,
+              description: item.description,
+              quantity: item.quantity,
+              unitPrice: item.unitPrice,
             })),
           });
         }
@@ -326,49 +305,14 @@ export class InvoiceService {
             },
 
             data: {
-              ...(data.clientId !==
-                undefined && {
-                clientId:
-                  data.clientId,
-              }),
-
-              ...(data.dueDate !==
-                undefined && {
-                dueDate: new Date(
-                  data.dueDate
-                ),
-              }),
-
-              ...(data.paymentTerms !==
-                undefined && {
-                paymentTerms:
-                  data.paymentTerms,
-              }),
-
-              ...(data.isRecurring !==
-                undefined && {
-                isRecurring:
-                  data.isRecurring,
-              }),
-
-              ...(data.recurringInterval !==
-                undefined && {
-                recurringInterval:
-                  data.recurringInterval,
-              }),
-
-              ...(nextRecurringDate !==
-                undefined && {
-                nextRecurringDate,
-              }),
-
-              ...(data.endDate !== undefined && {
-                endDate: data.endDate ? new Date(data.endDate) : null
-              }),
-
-              ...(data.recurringStatus !== undefined && {
-                RecurringStatus: data.recurringStatus
-              }),
+              ...(data.clientId !== undefined && { clientId: data.clientId }),
+              ...(data.dueDate !== undefined && { dueDate: new Date(data.dueDate)}),
+              ...(data.paymentTerms !== undefined && { paymentTerms: data.paymentTerms }),
+              ...(data.isRecurring !== undefined && { isRecurring: data.isRecurring }),
+              ...(data.recurringInterval !== undefined && { recurringInterval: data.recurringInterval }),
+              ...(nextRecurringDate !== undefined && { nextRecurringDate }),
+              ...(data.endDate !== undefined && { endDate: data.endDate ? new Date(data.endDate) : null }),
+              ...(data.recurringStatus !== undefined && { RecurringStatus: data.recurringStatus }),
             },
 
             include: {

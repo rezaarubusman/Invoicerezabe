@@ -23,11 +23,16 @@ export class ClientService {
         data: {
           userId,
           name: data.name,
+          company: data.company,
           email: data.email,
           phone: data.phone,
           address: data.address,
-          paymentPreference:
-            data.paymentPreference,
+          city: data.city,
+          state: data.state,
+          postalCode: data.postalCode,
+          country: data.country,
+          paymentTerms: data.paymentTerms,
+          notes: data.notes,
         },
       });
 
@@ -36,12 +41,8 @@ export class ClientService {
 
   getClients = async (userId: string) => {
     return this.prisma.client.findMany({
-      where: {
-        userId,
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
+      where: { userId },
+      orderBy: { createdAt: "desc" },
     });
   };
 
@@ -52,6 +53,13 @@ export class ClientService {
           id: clientId,
           userId,
         },
+
+        include: {
+          invoices: {
+            include: { items: true },
+            orderBy: { createdAt: 'desc'},
+          }
+        }
       });
 
     if (!client) {
@@ -80,9 +88,7 @@ export class ClientService {
           where: {
             userId,
             email: data.email,
-            NOT: {
-              id: clientId,
-            },
+            NOT: { id: clientId },
           },
         });
 
@@ -92,30 +98,19 @@ export class ClientService {
     }
 
     return this.prisma.client.update({
-      where: {
-        id: clientId,
-      },
+      where: { id: clientId },
       data: {
-        ...(data.name !== undefined && {
-          name: data.name,
-        }),
-
-        ...(data.email !== undefined && {
-          email: data.email,
-        }),
-
-        ...(data.phone !== undefined && {
-          phone: data.phone,
-        }),
-
-        ...(data.address !== undefined && {
-          address: data.address,
-        }),
-
-        ...(data.paymentPreference !== undefined && {
-          paymentPreference:
-            data.paymentPreference,
-        }),
+        ...(data.name !== undefined && { name: data.name }),
+        ...(data.company !== undefined && { company: data.company }),
+        ...(data.email !== undefined && { email: data.email }),
+        ...(data.phone !== undefined && { phone: data.phone }),
+        ...(data.address !== undefined && { address: data.address }),
+        ...(data.city !== undefined && { city: data.city }),
+        ...(data.state !== undefined && { state: data.state }),
+        ...(data.postalCode !== undefined && { postalCode: data.postalCode }),
+        ...(data.country !== undefined && { country: data.country }),
+        ...(data.paymentTerms !== undefined && { paymentTerms: data.paymentTerms }),
+        ...(data.notes !== undefined && { notes: data.notes }),
       },
     });
   };
@@ -135,9 +130,7 @@ export class ClientService {
 
     const invoiceCount =
       await this.prisma.invoice.count({
-        where: {
-          clientId,
-        },
+        where: { clientId },
       });
 
     if (invoiceCount > 0) {
@@ -145,9 +138,7 @@ export class ClientService {
     }
 
     await this.prisma.client.delete({
-      where: {
-        id: clientId,
-      },
+      where: { id: clientId },
     });
 
     return { message: "Client deleted successfully" };

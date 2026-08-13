@@ -6,6 +6,11 @@ export class CreateClientDto {
   @MaxLength(100)
   name!: string;
 
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  company?: string;
+
   @IsEmail()
   email!: string;
 
@@ -19,10 +24,34 @@ export class CreateClientDto {
   @MaxLength(1000)
   address?: string;
 
+  @IsString()
+  @MinLength(1)
+  @MaxLength(60)
+  city!: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(60)
+  state?: string;
+
+  @IsString()
+  @MaxLength(20)
+  postalCode!: string;
+
+  @IsString()
+  @MinLength(1)
+  @MaxLength(60)
+  country!: string;
+
   @IsOptional()
   @IsString()
   @MaxLength(100)
-  paymentPreference?: string;
+  paymentTerms?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  notes?: string;
 }
 
 export class UpdateClientDto {
@@ -31,6 +60,11 @@ export class UpdateClientDto {
   @MinLength(2)
   @MaxLength(100)
   name?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  company?: string;
 
   @IsOptional()
   @IsEmail()
@@ -48,8 +82,33 @@ export class UpdateClientDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(60)
+  city?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(60)
+  state?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  postalCode?: string;
+
+  @IsOptional()
+  @IsString()
   @MaxLength(100)
-  paymentPreference?: string;
+  country?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  paymentTerms?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  notes?: string;
 }
 
 export class ClientIdDto {
