@@ -3,7 +3,7 @@ import express from "express";
 import { corsOptions } from "./config/cors.js";
 import { loggerHttp } from "./lib/logger-http.js";
 import { errorMiddleware, notFoundMiddleware } from "./middlewares/error.middleware.js";
-import { prisma } from "./lib/prisma.js";
+import { prisma } from "./config/prisma.js";
 import { AuthMiddleware } from "./middlewares/auth.middleware.js";
 import { UploadMiddleware } from "./middlewares/upload.middleware.js";
 import { ValidationMiddleware } from "./middlewares/validation.middleware.js";
