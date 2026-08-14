@@ -50,27 +50,28 @@ export class ClientController {
     next: NextFunction
   ) => {
     try {
-      const userId =
-        res.locals.existingUser?.id;
+      const userId = res.locals.existingUser?.id;
 
       if (!userId) {
-        return next(
-          new ApiError(
-            "Unauthorized",
-            401
-          )
-        );
+        return next(new ApiError("Unauthorized", 401));
       }
 
-      const clients =
-        await this.clientService.getClients(
-          userId
-        );
+      const { search, terms, sort, dir, page, limit } = req.query;
+
+      const result = await this.clientService.getClients(userId, {
+        search: search as string,
+        terms: terms as string,
+        sortBy: sort as string,
+        sortDir: dir as string,
+        page: page ? parseInt(page as string) : 1,
+        limit: limit ? parseInt(limit as string) : 8,
+      });
 
       res.status(200).json({
         success: true,
         message: "Clients retrieved successfully",
-        data: clients,
+        data: result.clients,
+        meta: result.meta,
       });
     } catch (error) {
       next(error);

@@ -1,4 +1,4 @@
-import type { PrismaClient } from "@prisma/client";
+import type { PrismaClient, Prisma } from "@prisma/client";
 import { ApiError } from "../../utils/api-error.js";
 import type { CreateClientDto, UpdateClientDto } from "./client.dto.js";
 
@@ -39,11 +39,66 @@ export class ClientService {
     return client;
   };
 
-  getClients = async (userId: string) => {
-    return this.prisma.client.findMany({
-      where: { userId },
-      orderBy: { createdAt: "desc" },
-    });
+  getClients = async (
+    userId: string,
+    params: {
+      search?: string;
+      terms?: string;
+      sortBy?: string;
+      sortDir?: string;
+      page?: number;
+      limit?: number;
+    }
+  ) => {
+    const {
+      search,
+      terms,
+      sortBy = "createdAt",
+      sortDir = "desc",
+      page = 1,
+      limit = 8, 
+    } = params;
+
+    const skip = (page - 1) * limit;
+
+    const whereCondition: Prisma.ClientWhereInput = {
+      userId,
+      ...(terms && terms !== "all" && { paymentTerms: terms }),
+      ...(search && {
+        OR: [
+          { name: { contains: search, mode: "insensitive" } },
+          { company: { contains: search, mode: "insensitive" } },
+          { email: { contains: search, mode: "insensitive" } },
+        ],
+      }),
+    };
+
+    const [data, total] = await this.prisma.$transaction([
+      this.prisma.client.findMany({
+        where: whereCondition,
+        include: {
+          invoices: {
+            include: { items: true },
+          },
+        },
+        orderBy: {
+          [sortBy]: sortDir,
+        },
+        skip,
+        take: limit,
+      }),
+      this.prisma.client.count({ where: whereCondition }),
+    ]);
+
+    return {
+      clients: data,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
   };
 
   getClientById = async ( userId: string, clientId: string ) => {
