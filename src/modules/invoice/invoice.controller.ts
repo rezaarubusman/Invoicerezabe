@@ -40,28 +40,37 @@ export class InvoiceController {
     req: Request,
     res: Response,
     next: NextFunction
-    ) => {
-      try {
-        const userId = res.locals.existingUser?.id;
-        if (!userId) return next(new ApiError("Unauthorized", 401));
+  ) => {
+    try {
+      const userId = res.locals.existingUser?.id;
+      if (!userId) return next(new ApiError("Unauthorized", 401));
 
-        let isRecurringFilter: boolean | undefined = undefined;
-        if (req.query.isRecurring === 'true') isRecurringFilter = true;
-        if (req.query.isRecurring === 'false') isRecurringFilter = false;
+      const { search, status, client, sort, dir, page, limit, isRecurring } = req.query;
 
-        const invoices = await this.invoiceService.getInvoices(
-          userId,
-          isRecurringFilter
-        );
+      let isRecurringFilter: boolean | undefined = undefined;
+      if (isRecurring === 'true') isRecurringFilter = true;
+      if (isRecurring === 'false') isRecurringFilter = false;
 
-        res.status(200).json({
-          success: true,
-          message: "Invoices retrieved successfully",
-          data: invoices,
-        });
-      } catch (error) {
-        next(error);
-      }
+      const result = await this.invoiceService.getInvoices(userId, {
+        search: search as string,
+        status: status as string,
+        clientId: client as string,
+        sortBy: sort as string,
+        sortDir: dir as string,
+        page: page ? parseInt(page as string) : 1,
+        limit: limit ? parseInt(limit as string) : 8,
+        isRecurring: isRecurringFilter,
+      });
+
+      res.status(200).json({
+        success: true,
+        message: "Invoices retrieved successfully",
+        data: result.invoices, 
+        meta: result.meta,     
+      });
+    } catch (error) {
+      next(error);
+    }
   };
 
   getInvoiceById = async (

@@ -1,4 +1,4 @@
-import { IsNumber, IsOptional, IsString, IsUUID, Max, MaxLength, Min, MinLength, IsIn } from "class-validator";
+import { IsNumber, IsOptional, IsString, IsUUID, Max, MaxLength, Min, MinLength, IsIn, ValidateIf } from "class-validator";
 
 export class CreateProductDto {
   @IsString()
@@ -74,6 +74,7 @@ export class UpdateProductDto {
   tax?: number;
 
   @IsOptional()
+  @ValidateIf((object, value) => value !== null)
   @IsUUID()
   categoryId?: string | null;
 
