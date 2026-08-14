@@ -173,19 +173,71 @@ export class InvoiceService {
     );
   };
 
-  getInvoices = async ( userId: string, isRecurringFilter?: boolean ) => {
-    return this.prisma.invoice.findMany({
-      where: {
-        userId,
-        ...(isRecurringFilter !== undefined && { isRecurring: isRecurringFilter})},
+  getInvoices = async (
+    userId: string,
+    params: {
+      search?: string;
+      status?: string;
+      clientId?: string;
+      sortBy?: string;
+      sortDir?: string;
+      page?: number;
+      limit?: number;
+      isRecurring?: boolean;
+    }
+  ) => {
+    const {
+      search,
+      status,
+      clientId,
+      sortBy = "issueDate",
+      sortDir = "desc",
+      page = 1,
+      limit = 8, 
+      isRecurring,
+    } = params;
 
-      include: {
-        client: true,
-        items: { include: { product: true }, },
+    const skip = (page - 1) * limit;
+
+    const whereCondition: Prisma.InvoiceWhereInput = {
+      userId,
+      ...(isRecurring !== undefined && { isRecurring }),
+      ...(status && status !== "all" && { status: status.toUpperCase() as InvoiceStatus }),
+      ...(clientId && clientId !== "all" && { clientId }),
+      ...(search && {
+        OR: [
+          { number: { contains: search, mode: "insensitive" } },
+          { client: { name: { contains: search, mode: "insensitive" } } },
+          { client: { company: { contains: search, mode: "insensitive" } } },
+        ],
+      }),
+    };
+
+    const [data, total] = await this.prisma.$transaction([
+      this.prisma.invoice.findMany({
+        where: whereCondition,
+        include: {
+          client: true,
+          items: { include: { product: true } },
+        },
+        orderBy: {
+          [sortBy]: sortDir,
+        },
+        skip,
+        take: limit,
+      }),
+      this.prisma.invoice.count({ where: whereCondition }),
+    ]);
+
+    return {
+      invoices: data,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
       },
-
-      orderBy: { createdAt: "desc" },
-    });
+    };
   };
 
   getInvoiceById = async ( userId: string, invoiceId: string ) => {

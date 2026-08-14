@@ -45,34 +45,29 @@ export class ProductController {
     }
   };
 
-  getProducts = async (
-    _req: Request,
-    res: Response,
-    next: NextFunction
-  ) => {
+  getProducts = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const userId =
-        res.locals.existingUser?.id;
+      const userId = res.locals.existingUser?.id;
+      if (!userId) return next(new ApiError("Unauthorized", 401));
 
-      if (!userId) {
-        return next(
-          new ApiError(
-            "Unauthorized",
-            401
-          )
-        );
-      }
+      const query = {
+        search: req.query.search as string,
+        type: req.query.type as string,
+        status: req.query.status as string,
+        categoryId: req.query.category as string,
+        sortBy: req.query.sortBy as string,
+        sortOrder: req.query.sortOrder as 'asc' | 'desc',
+        page: req.query.page ? parseInt(req.query.page as string) : 1,
+        limit: req.query.limit ? parseInt(req.query.limit as string) : 8,
+      };
 
-      const products =
-        await this.productService.getProducts(
-          userId
-        );
+      const result = await this.productService.getProducts(userId, query);
 
       res.status(200).json({
         success: true,
-        message:
-          "Products retrieved successfully",
-        data: products,
+        message: "Products retrieved successfully",
+        data: result.data,
+        meta: result.meta,
       });
     } catch (error) {
       next(error);

@@ -53,15 +53,40 @@ export class ProductService {
     return product;
   };
 
-  getProducts = async ( userId: string ) => {
-    return this.prisma.product.findMany({
-      where: {
-        userId,
-        deletedAt: null,
-      },
-      include: { category: true },
-      orderBy: { createdAt: "desc" },
-    });
+  getProducts = async ( 
+    userId: string, 
+    query: { search?: string; type?: string; status?: string; categoryId?: string; sortBy?: string; sortOrder?: 'asc' | 'desc'; page?: number; limit?: number } 
+  ) => {
+    const { search, type, status, categoryId, sortBy = 'createdAt', sortOrder = 'desc', page = 1, limit = 8 } = query;
+    const skip = (page - 1) * limit;
+
+    const where: any = { userId, deletedAt: null };
+
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: 'insensitive' } },
+        { description: { contains: search, mode: 'insensitive' } },
+      ];
+    }
+    if (type && type !== 'all') where.type = type.toUpperCase();
+    if (status && status !== 'all') where.status = status.toUpperCase();
+    if (categoryId && categoryId !== 'all') where.categoryId = categoryId;
+
+    const [data, total] = await this.prisma.$transaction([
+      this.prisma.product.findMany({
+        where,
+        skip,
+        take: limit,
+        include: { category: true },
+        orderBy: { [sortBy]: sortOrder },
+      }),
+      this.prisma.product.count({ where })
+    ]);
+
+    return {
+      data,
+      meta: { total, page, limit, totalPages: Math.ceil(total / limit) }
+    };
   };
 
   getProductById = async ( userId: string, productId: string ) => {
