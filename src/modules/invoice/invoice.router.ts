@@ -2,7 +2,7 @@ import { Router } from "express";
 import type { AuthMiddleware } from "../../middlewares/auth.middleware.js";
 import type { ValidationMiddleware } from "../../middlewares/validation.middleware.js";
 import { InvoiceController } from "./invoice.controller.js";
-import { CreateInvoiceDto, UpdateInvoiceDto, UpdateInvoiceStatusDto } from "./invoice.dto.js";
+import { CreateInvoiceDto, UpdateInvoiceDto, UpdateInvoiceStatusDto, SendInvoiceDto } from "./invoice.dto.js";
 
 export class InvoiceRouter {
   public router: Router;
@@ -55,6 +55,15 @@ export class InvoiceRouter {
         UpdateInvoiceStatusDto
       ),
       this.invoiceController.updateStatus
+    );
+
+    this.router.post(
+      "/:id/send",
+      this.authMiddleware.verifyToken,
+      this.validationMiddleware.validateBody(
+        SendInvoiceDto
+      ),
+      this.invoiceController.sendInvoice
     );
 
     this.router.delete(

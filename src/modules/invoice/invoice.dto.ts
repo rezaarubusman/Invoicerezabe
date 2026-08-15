@@ -1,10 +1,10 @@
-import { IsArray, IsBoolean, IsDateString, IsEnum, IsInt, IsNumber, IsOptional, IsString, IsUUID, Max, MaxLength, Min, MinLength, ValidateIf, ValidateNested } from "class-validator";
+import { IsArray, IsBoolean, IsDateString, IsEnum, IsInt, IsNumber, IsOptional, IsString, IsUUID, Max, MaxLength, Min, MinLength, ValidateIf, ValidateNested, IsEmail } from "class-validator";
 import { Type } from "class-transformer";
 import { InvoiceStatus, RecurringInterval, RecurringStatus } from "@prisma/client";
 
 export class CreateInvoiceItemDto {
   @IsOptional()
-  @IsUUID()
+  @IsString()
   productId?: string;
 
   @ValidateIf((object) => !object.productId)
@@ -49,7 +49,7 @@ export class CreateInvoiceDto {
   @MinLength(3)
   number!: string; 
 
-  @IsUUID()
+  @IsString()
   clientId!: string;
 
   @IsDateString()
@@ -111,7 +111,7 @@ export class UpdateInvoiceDto {
   number?: string;
 
   @IsOptional()
-  @IsUUID()
+  @IsString()
   clientId?: string;
 
   @IsOptional()
@@ -130,6 +130,16 @@ export class UpdateInvoiceDto {
   @IsOptional()
   @IsBoolean()
   isRecurring?: boolean;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  notes?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  terms?: string;
 
   @ValidateIf((object) => object.isRecurring === true)
   @IsEnum(RecurringInterval)
@@ -172,4 +182,23 @@ export class UpdateInvoiceStatusDto {
   @IsOptional()
   @IsNumber()
   amountPaid?: number;
+}
+
+export class SendInvoiceDto {
+  @IsEmail({}, { message: "Invalid email format for 'to'" })
+  to!: string;
+
+  @IsOptional()
+  @IsString()
+  cc?: string;
+
+  @IsString()
+  @MinLength(1)
+  @MaxLength(120)
+  subject!: string;
+
+  @IsString()
+  @MinLength(1)
+  @MaxLength(1000)
+  message!: string;
 }

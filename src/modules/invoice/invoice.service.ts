@@ -2,11 +2,20 @@ import type { PrismaClient, Prisma } from "@prisma/client";
 import { InvoiceStatus, RecurringInterval, RecurringStatus } from "@prisma/client";
 import { ApiError } from "../../utils/api-error.js";
 import type { CreateInvoiceDto, CreateInvoiceItemDto, UpdateInvoiceDto } from "./invoice.dto.js";
+import { MailService } from "../../modules/mail/mail.service.js"
+import puppeteer from "puppeteer";
+import fs from "fs/promises";
+import handlebars from "handlebars";
+import path, { dirname } from "path";
+import { fileURLToPath } from "url";
 
 export class InvoiceService {
-  constructor(private prisma: PrismaClient) {}
+  constructor(
+    private prisma: PrismaClient, 
+    private mailService: MailService,
+  ) {}
 
-  private generateInvoiceNumber = () => {
+  generateInvoiceNumber = () => {
     const date = new Date();
 
     const year = date.getFullYear();
@@ -328,6 +337,8 @@ export class InvoiceService {
               description: item.description,
               quantity: item.quantity,
               unitPrice: item.unitPrice,
+              discount: item.discount, 
+              tax: item.tax,
             })),
           });
         }
@@ -360,6 +371,9 @@ export class InvoiceService {
               ...(data.clientId !== undefined && { clientId: data.clientId }),
               ...(data.dueDate !== undefined && { dueDate: new Date(data.dueDate)}),
               ...(data.paymentTerms !== undefined && { paymentTerms: data.paymentTerms }),
+              ...(data.currency !== undefined && { currency: data.currency }),
+              ...(data.notes !== undefined && { notes: data.notes }),
+              ...(data.terms !== undefined && { terms: data.terms }),
               ...(data.isRecurring !== undefined && { isRecurring: data.isRecurring }),
               ...(data.recurringInterval !== undefined && { recurringInterval: data.recurringInterval }),
               ...(nextRecurringDate !== undefined && { nextRecurringDate }),
@@ -510,5 +524,91 @@ export class InvoiceService {
     }
 
     return next;
+  };
+
+  sendInvoiceEmail = async (
+    userId: string,
+    invoiceId: string,
+    emailData: { to: string; cc?: string; subject: string; message: string }
+  ) => {
+    const rawInvoice = await this.getInvoiceById(userId, invoiceId);
+
+    const formatIDR = (value: number) => `Rp ${new Intl.NumberFormat("id-ID").format(Math.round(value))}`;
+    const formatDate = (date: Date) => new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short", year: "numeric" }).format(date);
+
+    let subtotal = 0;
+    let totalTax = 0;
+    let totalDiscount = 0;
+
+    const formattedItems = rawInvoice.items.map(item => {
+      const price = Number(item.unitPrice);
+      const gross = item.quantity * price;
+      const discount = (gross * Number(item.discount)) / 100;
+      const net = gross - discount;
+      const tax = (net * Number(item.tax)) / 100;
+      const itemTotal = net + tax;
+
+      subtotal += gross;
+      totalDiscount += discount;
+      totalTax += tax;
+
+      return {
+        name: item.name,
+        description: item.description,
+        quantity: item.quantity,
+        formattedUnitPrice: formatIDR(price),
+        formattedAmount: formatIDR(itemTotal),
+      };
+    });
+
+    const grandTotal = subtotal - totalDiscount + totalTax;
+
+    const invoiceForPDF = {
+      ...rawInvoice,
+      formattedIssueDate: formatDate(rawInvoice.issueDate),
+      formattedDueDate: formatDate(rawInvoice.dueDate),
+      items: formattedItems,
+      formattedSubtotal: formatIDR(subtotal),
+      formattedTax: formatIDR(totalTax),
+      formattedDiscount: formatIDR(totalDiscount),
+      formattedTotal: formatIDR(grandTotal)
+    };
+
+    const __filename = fileURLToPath(import.meta.url);
+    const __dirname = dirname(__filename);
+    const templatePath = path.join(process.cwd(), "src", "modules", "mail", "tempelate", "email-invoice.hbs");
+    
+    const templateSource = await fs.readFile(templatePath, "utf-8");
+    const compiledTemplate = handlebars.compile(templateSource);
+    
+    const htmlContent = compiledTemplate({ invoice: invoiceForPDF }); 
+
+    const browser = await puppeteer.launch({ headless: true });
+    const page = await browser.newPage();
+    await page.setContent(htmlContent, { waitUntil: "load" });
+    const pdfBuffer = await page.pdf({ format: "A4", printBackground: true });
+    await browser.close();
+
+    await this.mailService.sendEmail(
+      emailData.to,
+      emailData.subject,
+      "email-invoice", 
+      { message: emailData.message }, 
+      [{ filename: `INV-${rawInvoice.number}.pdf`, content: Buffer.from(pdfBuffer) }]
+    );
+
+    if (rawInvoice.status === InvoiceStatus.DRAFT) {
+      await this.updateStatus(userId, rawInvoice.id, InvoiceStatus.PENDING);
+    } else {
+      await this.prisma.invoiceActivity.create({
+        data: {
+          invoiceId: rawInvoice.id,
+          label: "Invoice Sent",
+          description: `Emailed to ${emailData.to}`,
+        }
+      });
+    }
+
+    return { message: "Email sent successfully" };
   };
 }

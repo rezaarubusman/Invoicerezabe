@@ -52,6 +52,7 @@ export class MailService {
     subject: string,
     templateName: string,
     context: object,
+    attachments?: { filename: string; content: Buffer }[]
   ) => {
     const html = await this.renderTemplates(templateName, context);
 
@@ -59,6 +60,7 @@ export class MailService {
       to: to,
       subject: subject,
       html: html,
+      attachments,
     });
   };
 }

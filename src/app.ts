@@ -72,7 +72,7 @@ export class App {
     const productController = new ProductController(productService);
     const productRouter = new ProductRouter(productController, authMiddleware, validationMiddleware);
 
-    const invoiceService = new InvoiceService(prismaClient);
+    const invoiceService = new InvoiceService(prismaClient, mailService);
     const invoiceController = new InvoiceController(invoiceService);
     const invoiceRouter = new InvoiceRouter(invoiceController, authMiddleware, validationMiddleware);
 

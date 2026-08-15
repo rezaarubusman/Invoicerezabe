@@ -2,7 +2,7 @@ import type { NextFunction, Request, Response } from "express";
 import { InvoiceStatus } from "@prisma/client";
 import { ApiError } from "../../utils/api-error.js";
 import { InvoiceService } from "./invoice.service.js";
-import type { CreateInvoiceDto, UpdateInvoiceDto, UpdateInvoiceStatusDto } from "./invoice.dto.js";
+import type { CreateInvoiceDto, UpdateInvoiceDto, UpdateInvoiceStatusDto, SendInvoiceDto } from "./invoice.dto.js";
 import { getParamId } from "../../utils/get-param-id.js";
 
 export class InvoiceController {
@@ -155,7 +155,7 @@ export class InvoiceController {
           userId,
           id,
           status,
-          { paymentMethod, paymentReference, amountPaid } // Teruskan data payment
+          { paymentMethod, paymentReference, amountPaid } 
         );
 
         res.status(200).json({
@@ -165,6 +165,40 @@ export class InvoiceController {
         });
       } catch (error) {
         next(error);
+    }
+  };
+
+  sendInvoice = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
+    try {
+      const userId = res.locals.existingUser?.id;
+      if (!userId) {
+        return next(new ApiError("Unauthorized", 401));
+      }
+
+      const id = getParamId(req.params.id);
+      if (!id || Array.isArray(id)) {
+        return next(new ApiError("Invalid invoice ID", 400));
+      }
+
+      const emailData = req.body as SendInvoiceDto;
+
+      const result = await this.invoiceService.sendInvoiceEmail(
+        userId,
+        id,
+        emailData
+      );
+
+      res.status(200).json({
+        success: true,
+        message: "Invoice sent successfully",
+        data: result,
+      });
+    } catch (error) {
+      next(error);
     }
   };
 
