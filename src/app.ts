@@ -24,6 +24,9 @@ import { InvoiceService } from "./modules/invoice/invoice.service.js";
 import { InvoiceController } from "./modules/invoice/invoice.controller.js";
 import { InvoiceRouter } from "./modules/invoice/invoice.router.js";
 import { MailService } from "./modules/mail/mail.service.js";
+import { UserService } from "./modules/user/user.service.js";
+import { UserController } from "./modules/user/user.controller.js";
+import { UserRouter } from "./modules/user/user.router.js";
 
 const PORT = 8000;
 
@@ -71,7 +74,11 @@ export class App {
 
     const invoiceService = new InvoiceService(prismaClient);
     const invoiceController = new InvoiceController(invoiceService);
-    const invoiceRouter = new InvoiceRouter(invoiceController, authMiddleware, validationMiddleware)
+    const invoiceRouter = new InvoiceRouter(invoiceController, authMiddleware, validationMiddleware);
+
+    const userService = new UserService(prismaClient, cloudinaryService);
+    const userController = new UserController(userService);
+    const userRouter = new UserRouter (userController, authMiddleware, validationMiddleware);
 
     this.app.use(
       "/auth",
@@ -96,6 +103,11 @@ export class App {
     this.app.use(
       "/invoice",
       invoiceRouter.getRouter()
+    )
+
+    this.app.use(
+      "/user",
+      userRouter.getRouter()
     )
   };
 
