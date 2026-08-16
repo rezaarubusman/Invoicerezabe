@@ -67,10 +67,9 @@ export class AuthService {
     const frontendUrl =
       process.env.FRONTEND_URL ?? "http://localhost:5173";
 
-    const verificationUrl =
-      `${frontendUrl}/verify-email?token=${encodeURIComponent(
-        verificationToken,
-      )}`;
+    const verificationUrl = `${frontendUrl}/verify-email?token=${encodeURIComponent(
+      verificationToken
+    )}&email=${encodeURIComponent(user.email)}`;
 
     try {
       await this.mailService.sendEmail(
@@ -306,10 +305,9 @@ export class AuthService {
       process.env.FRONTEND_URL ??
       "http://localhost:5173";
 
-    const verificationUrl =
-      `${frontendUrl}/verify-email?token=${encodeURIComponent(
-        verificationToken,
-      )}`;
+    const verificationUrl = `${frontendUrl}/verify-email?token=${encodeURIComponent(
+      verificationToken
+    )}&email=${encodeURIComponent(user.email)}`;
 
     try {
       await this.mailService.sendEmail(

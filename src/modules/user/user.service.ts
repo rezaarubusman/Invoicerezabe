@@ -21,10 +21,10 @@ export class UserService {
     return user;
   }
 
-  async updateProfile(userId: string, data: { name: string; email: string }) {
+  async updateProfile(userId: string, data: { name: string }) {
     return await this.prisma.user.update({
       where: { id: userId },
-      data: { name: data.name, email: data.email },
+      data: { name: data.name },
     });
   }
 

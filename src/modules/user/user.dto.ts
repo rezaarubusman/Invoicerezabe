@@ -5,9 +5,6 @@ export class UpdateProfileDto {
   @MinLength(2, { message: "Name must be at least 2 characters" })
   @MaxLength(80)
   name!: string;
-
-  @IsEmail({}, { message: "Invalid email format" })
-  email!: string;
 }
 
 export class UpdateInvoiceSettingsDto {
