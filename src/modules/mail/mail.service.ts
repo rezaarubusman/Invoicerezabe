@@ -25,11 +25,7 @@ export class MailService {
     user: process.env.MAIL_USER,
     pass: process.env.MAIL_PASSWORD,
   },
-
-  tls: {
-    rejectUnauthorized: false,
-        },
-    });
+  });
   }
 
   private renderTemplates = async (templateName: string, context: object) => {
